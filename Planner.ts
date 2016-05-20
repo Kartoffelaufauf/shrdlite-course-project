@@ -107,14 +107,15 @@ module Planner {
             var start = new PlannerNode(state.stacks, state.holding, state.arm);
             var _goal = (n: PlannerNode) => goal(interpretations, state.objects, n);
             var _heuristics = (n: PlannerNode) => heuristics(interpretations, n);
-
-            var result = aStarSearch(graph, start, _goal, _heuristics, 10);
+            var result = aStarSearch(graph, start, _goal, _heuristics, 100);
             result.path.shift();
 
             result.path.forEach(function(node) {
                 if (node.description) plan.push(node.description);
                 plan.push(node.command);
             });
+
+            console.log('Goal count: ' + goalCount);
         }
 
         return plan;
@@ -136,9 +137,9 @@ module Planner {
         var result : number[] = [];
 
         interpretations.forEach(function(interpretation) {
-            interpretation.forEach(function(condition) {
-                var _heuristics = 0;
+            var _heuristics = 0;
 
+            interpretation.forEach(function(condition) {
                 var first = condition.args[0];
                 var firstStackIndex = getStackIndex(n.stacks, first) || n.arm;
 
@@ -185,15 +186,19 @@ module Planner {
                         _heuristics += n.holding === first ? 1 : 2;
                     }
                 }
-
-                result.push(_heuristics);
             });
+
+            result.push(_heuristics);
         });
 
         return Math.min.apply(null, result);
     }
 
+    var goalCount: number = 0;
+
     function goal(interpretations : Interpreter.DNFFormula, objects: { [s:string]: ObjectDefinition; }, n: PlannerNode) : boolean {
+        goalCount++;
+
         var _goal = false;
 
         for (var i = 0; i < interpretations.length && !_goal; i++) {
