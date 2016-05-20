@@ -76,19 +76,46 @@ module Planner {
      * be added using the `push` method.
      */
     function planInterpretation(interpretations : Interpreter.DNFFormula, state : WorldState) : string[] {
-        var graph = new PlannerGraph(state.objects);
-        var start = new PlannerNode(state.stacks, state.holding, state.arm);
-        var _goal = (n: PlannerNode) => goal(interpretations, state.objects, n);
-        var _heuristics = (n: PlannerNode) => heuristics(interpretations, n);
-
-        var result = aStarSearch(graph, start, _goal, _heuristics, 10);
-        result.path.shift();
-
         var plan : string[] = [];
 
-        result.path.forEach(function(node) {
-            plan.push(node.command);
-        });
+        if (interpretations[0][0].relation === 'where') {
+            var locations : string[] = [];
+
+            function mapNumberToText(num : number) : string {
+                if (num > 2) {
+                    return (num + 1) + 'th';
+                } else {
+                    return ['first', 'second', 'third'][num];
+                }
+            }
+
+            interpretations.forEach(function(matches) {
+                var stackIndex = getStackIndex(state.stacks, matches[0].args[0]);
+
+                if (stackIndex > -1) {
+                    var stackPos = state.stacks[stackIndex].indexOf(matches[0].args[0]);
+                    locations.push('in the ' + mapNumberToText(stackIndex) + ' stack at the ' + mapNumberToText(stackPos) + ' position');
+                } else {
+                    locations.push('in the claw');
+                }
+            });
+
+            var locationString = (locations.length > 1 ? 'There are many. The first one is ' : 'It is ') + locations.join(" and another ") + '.';
+            plan.push(locationString);
+        } else {
+            var graph = new PlannerGraph(state.objects);
+            var start = new PlannerNode(state.stacks, state.holding, state.arm);
+            var _goal = (n: PlannerNode) => goal(interpretations, state.objects, n);
+            var _heuristics = (n: PlannerNode) => heuristics(interpretations, n);
+
+            var result = aStarSearch(graph, start, _goal, _heuristics, 10);
+            result.path.shift();
+
+            result.path.forEach(function(node) {
+                if (node.description) plan.push(node.description);
+                plan.push(node.command);
+            });
+        }
 
         return plan;
     }
@@ -244,6 +271,8 @@ module Planner {
                 var holding = node.holding;
                 var arm = node.arm;
 
+                var description : string;
+
                 if (command === 'l') {
                     if (arm <= 0) return;
                     arm--;
@@ -253,6 +282,8 @@ module Planner {
                 } else if (command === 'p') {
                     if (holding !== null || stacks[arm].length <= 0) return;
                     holding = stacks[arm].pop();
+
+                    description = getDescription('p', holding);
                 } else if (command === 'd') {
                     var holdForm = holding ? self.objects[holding].form : null;
                     var holdSize = holding ? self.objects[holding].size : null;
@@ -271,14 +302,49 @@ module Planner {
 
                     stacks[arm].push(holding);
                     holding = null;
+
+                    description = getDescription('d', stacks[arm][stacks[arm].length - 2]);
                 }
 
                 outgoing.push({
                     from: node,
-                    to: new PlannerNode(stacks, holding, arm, command),
+                    to: new PlannerNode(stacks, holding, arm, command, description),
                     cost: 1
                 });
             });
+
+            function getDescription(action : string, entity : string) : string {
+                var result = action === 'p' ? 'Picking up ' : 'Putting it ';
+
+                if (entity) {
+                    if (action === 'd') result += self.objects[entity].form === 'box' ? 'inside ' : 'on ';
+
+                    var existing : string[] = Array.prototype.concat.apply([], node.stacks);
+                    if (node.holding !== null) existing.push(node.holding);
+                    existing.splice(existing.indexOf(entity), 1);
+
+                    var numSameForm = existing.reduce((sum, e) => sum + (self.objects[e].form === self.objects[entity].form ? 1 : 0), 0);
+                    var numSameFormColor = existing.reduce((sum, e) => sum + (self.objects[e].form === self.objects[entity].form && self.objects[e].color === self.objects[entity].color ? 1 : 0), 0);
+                    var numSameFormSize = existing.reduce((sum, e) => sum + (self.objects[e].form === self.objects[entity].form && self.objects[e].size === self.objects[entity].size ? 1 : 0), 0);
+                    var numSameFormColorSize = existing.reduce((sum, e) => sum + (self.objects[e].form === self.objects[entity].form && self.objects[e].color === self.objects[entity].color && self.objects[e].size === self.objects[entity].size ? 1 : 0), 0);
+
+                    if (numSameForm === 0) {
+                        result += 'the ' + self.objects[entity].form;
+                    } else if (numSameFormColor === 0) {
+                        result += 'the ' + self.objects[entity].color + ' ' + self.objects[entity].form;
+                    } else if (numSameFormSize === 0) {
+                        result += 'the ' + self.objects[entity].size + ' ' + self.objects[entity].form;
+                    } else if (numSameFormColorSize === 0) {
+                        result += 'the ' + self.objects[entity].color + ' ' + self.objects[entity].size + ' ' + self.objects[entity].form;
+                    } else {
+                        result += 'a ' + self.objects[entity].color + ' ' + self.objects[entity].size + ' ' + self.objects[entity].form;
+                    }
+                } else {
+                    result += 'on the floor';
+                }
+
+                return result + '.';
+            }
 
             return outgoing;
         }
@@ -295,7 +361,8 @@ module Planner {
             stacks : Stack[],
             public holding : string,
             public arm : number,
-            public command? : string
+            public command? : string,
+            public description? : string
         ) {
             this.stacks = stacks.slice(0);
         }
