@@ -139,16 +139,22 @@ module Interpreter {
                 });
             });
 
-            if (cmd.command === 'move' && cmd.entity.quantifier === 'all') {
-                interpretations = [Array.prototype.concat.apply([], interpretations)];
+            if (cmd.command === 'move' && (cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all')) {
+                if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
+                    interpretations = allQuantifierValidator(first, interpretations);
+                } else {
+                    interpretations = [Array.prototype.concat.apply([], interpretations)];
+                }
 
                 // The floor can support at most N objects (beside each other)
-                var nbrEntitiesOnTopOfFloor = 0;
-                interpretations[0].forEach(function(condition) {
-                    if (condition.relation === 'ontop' && condition.args[1] === 'floor') nbrEntitiesOnTopOfFloor++;
-                });
+                interpretations = interpretations.filter(function(interpretation) {
+                    var nbrEntitiesOnTopOfFloor = 0;
+                    interpretation.forEach(function(condition) {
+                        if (condition.relation === 'ontop' && condition.args[1] === 'floor') nbrEntitiesOnTopOfFloor++;
+                    });
 
-                if (nbrEntitiesOnTopOfFloor > state.stacks.length) interpretations = [];
+                    return nbrEntitiesOnTopOfFloor <= state.stacks.length;
+                });
             }
         }
 
@@ -158,6 +164,61 @@ module Interpreter {
             throw "No interpretations possible";
 
         // Inner helper functions below
+
+        function allQuantifierValidator(entities : string[], interpretations : Literal[][]) {
+            function getCombinations(arrays : Literal[][]) : Literal[][] {
+                if (arrays.length === 1) {
+                    return arrays;
+                }
+
+                var first = arrays[0];
+                var rest = getCombinations(arrays.slice(1));
+
+                var combos : Literal[][] = [];
+
+                if (rest.length === 1) {
+                    first.forEach(function(a1) {
+                        rest[0].forEach(function(a2) {
+                            combos.push([a1, a2]);
+                        });
+                    });
+                } else {
+                    first.forEach(function(a1) {
+                        rest.forEach(function(a2) {
+                            combos.push(a2.concat(a1));
+                        });
+                    });
+                }
+
+                return combos;
+            }
+
+            var groupLiteralsByEntity: { [s: string] : Literal[]; } = {};
+            entities.forEach(function(entity) {
+                groupLiteralsByEntity[entity] = [];
+            });
+
+            interpretations.forEach(function(condition) {
+                groupLiteralsByEntity[condition[0].args[0]].push(condition[0]);
+            });
+
+            var groupLiteralsByEntityValues : Literal[][] = [];
+            entities.forEach(function(entity) {
+                groupLiteralsByEntityValues.push(groupLiteralsByEntity[entity]);
+            });
+
+            return getCombinations(groupLiteralsByEntityValues).filter(function(combination) {
+                var entitiesSeen : string[] = [];
+
+                return !combination.some(function(literal) {
+                    if (literal.args[1] !== 'floor' && (entitiesSeen.indexOf(literal.args[0]) > -1 || entitiesSeen.indexOf(literal.args[1]) > -1)) {
+                        return true;
+                    } else {
+                        return entitiesSeen.push(literal.args[0], literal.args[1]) && false;
+                    }
+                });
+            });
+        }
 
         function isValid(stacks : Stack[], relation : string, first : string, second : string) {
             var firstSize = first !== 'floor' ? state.objects[first].size : null;
@@ -173,7 +234,7 @@ module Interpreter {
                 (firstSize === 'small' && firstForm === 'box' && relation === 'ontop' && secondSize === 'small' && ['brick', 'pyramid'].indexOf(secondForm) > -1) ||  // Small boxes cannot be supported by small bricks or pyramids
                 (firstSize === 'large' && firstForm === 'box' && relation === 'ontop' && secondSize === 'large' && secondForm === 'pyramid') ||                       // Large boxes cannot be supported by large pyramids
                 (second === 'floor' && ['ontop', 'above'].indexOf(relation) === -1) ||                                                                                // An object can only be ontop or above the floor
-                (first === 'floor')) {                                                                                                                                // The floor cannot be moved
+                (first === 'floor')) {                                                                                                                                // The floor cannot be moved
                 return false;
             }
 

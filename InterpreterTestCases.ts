@@ -9,7 +9,6 @@ module Interpreter {
   export var allTestCases : TestCase[] = [];
 
   allTestCases.push(
-
       {world: "small",
        utterance: "take an object",
        interpretations: [["holding(e)", "holding(f)", "holding(g)", "holding(k)", "holding(l)", "holding(m)"]]
@@ -91,23 +90,21 @@ module Interpreter {
       {world: "small",
        utterance: "put all balls left of a box on the floor",
        interpretations: [["leftof(e,k) & leftof(f,k)"], ["ontop(e,floor)"]]
-      }
+     }
   );
 
-  // /* More dubious examples for the ALL quantifier */
-  // /* (i.e., it's not clear that these interpretations are the best) */
-  // allTestCases.push(
-  //     {world: "small",
-  //      utterance: "put a ball in every large box",
-  //      interpretations: [["inside(e,k) & inside(f,k)", "inside(e,l) & inside(f,k)",
-  //                         "inside(e,k) & inside(f,l)", "inside(e,l) & inside(f,l)"]]
-  //     },
+  /* More dubious examples for the ALL quantifier */
+  /* (i.e., it's not clear that these interpretations are the best) */
+  allTestCases.push(
+      {world: "small",
+       utterance: "put a ball in every large box",
+       interpretations: [["inside(e,k) & inside(f,l)", "inside(e,l) & inside(f,k)"]]
+     },
 
-  //     {world: "small",
-  //      utterance: "put every ball in a box",
-  //      interpretations: [["inside(e,k) & inside(f,k)", "inside(e,l) & inside(f,k)",
-  //                         "inside(e,k) & inside(f,l)", "inside(e,l) & inside(f,l)",
-  //                         "inside(e,k) & inside(f,m)", "inside(e,l) & inside(f,m)"]]
-  //     }
-  // );
+      {world: "small",
+       utterance: "put all balls in a box",
+       interpretations: [["inside(e,l) & inside(f,k)", "inside(e,l) & inside(f,m)",
+                          "inside(e,k) & inside(f,l)", "inside(e,k) & inside(f,m)"]]
+      }
+  );
 }
