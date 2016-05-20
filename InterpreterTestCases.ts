@@ -105,6 +105,11 @@ module Interpreter {
        utterance: "put all balls in a box",
        interpretations: [["inside(e,l) & inside(f,k)", "inside(e,l) & inside(f,m)",
                           "inside(e,k) & inside(f,l)", "inside(e,k) & inside(f,m)"]]
+      },
+
+      {world: "small",
+       utterance: "put all boxes on the floor",
+       interpretations: [["ontop(k,floor) & ontop(l,floor) & ontop(m,floor)"]]
       }
   );
 }

@@ -166,31 +166,20 @@ module Interpreter {
         // Inner helper functions below
 
         function allQuantifierValidator(entities : string[], interpretations : Literal[][]) {
-            function getCombinations(arrays : Literal[][]) : Literal[][] {
-                if (arrays.length === 1) {
-                    return arrays;
+            function cartesian(arg : Literal[][]) : Literal[][] {
+                var r : Literal[][] = [], max = arg.length-1;
+                function helper(arr : Literal[], i : number) {
+                    for (var j=0, l=arg[i].length; j<l; j++) {
+                        var a = arr.slice(0);
+                        a.push(arg[i][j]);
+                        if (i == max)
+                            r.push(a);
+                        else
+                            helper(a, i+1);
+                    }
                 }
-
-                var first = arrays[0];
-                var rest = getCombinations(arrays.slice(1));
-
-                var combos : Literal[][] = [];
-
-                if (rest.length === 1) {
-                    first.forEach(function(a1) {
-                        rest[0].forEach(function(a2) {
-                            combos.push([a1, a2]);
-                        });
-                    });
-                } else {
-                    first.forEach(function(a1) {
-                        rest.forEach(function(a2) {
-                            combos.push(a2.concat(a1));
-                        });
-                    });
-                }
-
-                return combos;
+                helper([], 0);
+                return r;
             }
 
             var groupLiteralsByEntity: { [s: string] : Literal[]; } = {};
@@ -207,7 +196,7 @@ module Interpreter {
                 groupLiteralsByEntityValues.push(groupLiteralsByEntity[entity]);
             });
 
-            return getCombinations(groupLiteralsByEntityValues).filter(function(combination) {
+            return cartesian(groupLiteralsByEntityValues).filter(function(combination) {
                 var entitiesSeen : string[] = [];
 
                 return !combination.some(function(literal) {
