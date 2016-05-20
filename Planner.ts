@@ -172,18 +172,11 @@ module Planner {
                         _heuristics += firstStackIndex >= secondStackIndex ? firstStackIndex - secondStackIndex + 1 : 0;
                         _heuristics += [first, second].indexOf(n.holding) > -1 ? 1 : 2;
                     } else if (condition.relation === 'beside' && !(stackDifference === 1 && !holdingOneOfThem)) {
-                        _heuristics += Math.min(numAboveFirst, numAboveSecond) * 4;
-                        _heuristics += Math.abs(Math.abs(firstStackIndex - secondStackIndex) - 1);
-                        _heuristics += [first, second].indexOf(n.holding) > -1 ? 1 : 2;
+                        _heuristics += !holdingOneOfThem ? Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst, Math.abs(secondStackIndex - n.arm) + numAboveSecond) + 1 + Math.abs(Math.abs(firstStackIndex - secondStackIndex) - 1) + 1 : Math.min(Math.abs(firstStackIndex - n.arm), Math.abs(secondStackIndex - n.arm));
                     } else if (['inside', 'ontop'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos === secondStackPos + 1 && !holdingOneOfThem)) {
-                        _heuristics += numAboveSecond * 4;
-                        _heuristics += numAboveFirst * 4;
-                        _heuristics += Math.abs(firstStackIndex - secondStackIndex);
-                        _heuristics += n.holding === first ? 1 : 2;
+                        _heuristics += n.holding !== first ? Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1 : Math.abs(secondStackIndex - n.arm) + (numAboveSecond * 4) + 1;
                     } else if (['above', 'under'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos > secondStackPos && !holdingOneOfThem)) {
-                        _heuristics += numAboveFirst * 4;
-                        _heuristics += Math.abs(firstStackIndex - secondStackIndex);
-                        _heuristics += n.holding === first ? 1 : 2;
+                        _heuristics += n.holding !== first ? Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + 1 : Math.abs(secondStackIndex - n.arm) + 1;
                     }
                 }
             });
