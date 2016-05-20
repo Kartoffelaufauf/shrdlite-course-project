@@ -267,7 +267,7 @@ module Planner {
                     (node.command === 'd' && command === 'p'))
                     return;
 
-                var stacks = node.stacks.slice(0);
+                var stacks = JSON.parse(JSON.stringify(node.stacks));
                 var holding = node.holding;
                 var arm = node.arm;
 
@@ -364,7 +364,7 @@ module Planner {
             public command? : string,
             public description? : string
         ) {
-            this.stacks = stacks.slice(0);
+            this.stacks = JSON.parse(JSON.stringify(stacks));
         }
 
         toString() : string {
