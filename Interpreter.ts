@@ -143,16 +143,22 @@ module Interpreter {
                 });
             });
 
-            if (cmd.command === 'move' && cmd.entity.quantifier === 'all') {
-                interpretations = [Array.prototype.concat.apply([], interpretations)];
+            if (cmd.command === 'move' && (cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all')) {
+                if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
+                    interpretations = allQuantifierValidator(first, interpretations);
+                } else {
+                    interpretations = [Array.prototype.concat.apply([], interpretations)];
+                }
 
                 // The floor can support at most N objects (beside each other)
-                var nbrEntitiesOnTopOfFloor = 0;
-                interpretations[0].forEach(function(condition) {
-                    if (condition.relation === 'ontop' && condition.args[1] === 'floor') nbrEntitiesOnTopOfFloor++;
-                });
+                interpretations = interpretations.filter(function(interpretation) {
+                    var nbrEntitiesOnTopOfFloor = 0;
+                    interpretation.forEach(function(condition) {
+                        if (condition.relation === 'ontop' && condition.args[1] === 'floor') nbrEntitiesOnTopOfFloor++;
+                    });
 
-                if (nbrEntitiesOnTopOfFloor > state.stacks.length) interpretations = [];
+                    return nbrEntitiesOnTopOfFloor <= state.stacks.length;
+                });
             }
         }
 
@@ -162,6 +168,50 @@ module Interpreter {
             throw "No interpretations possible";
 
         // Inner helper functions below
+
+        function allQuantifierValidator(entities : string[], interpretations : Literal[][]) {
+            function cartesian(arg : Literal[][]) : Literal[][] {
+                var r : Literal[][] = [], max = arg.length-1;
+                function helper(arr : Literal[], i : number) {
+                    for (var j=0, l=arg[i].length; j<l; j++) {
+                        var a = arr.slice(0);
+                        a.push(arg[i][j]);
+                        if (i == max)
+                            r.push(a);
+                        else
+                            helper(a, i+1);
+                    }
+                }
+                helper([], 0);
+                return r;
+            }
+
+            var groupLiteralsByEntity: { [s: string] : Literal[]; } = {};
+            entities.forEach(function(entity) {
+                groupLiteralsByEntity[entity] = [];
+            });
+
+            interpretations.forEach(function(condition) {
+                groupLiteralsByEntity[condition[0].args[0]].push(condition[0]);
+            });
+
+            var groupLiteralsByEntityValues : Literal[][] = [];
+            entities.forEach(function(entity) {
+                groupLiteralsByEntityValues.push(groupLiteralsByEntity[entity]);
+            });
+
+            return cartesian(groupLiteralsByEntityValues).filter(function(combination) {
+                var entitiesSeen : string[] = [];
+
+                return !combination.some(function(literal) {
+                    if (literal.args[1] !== 'floor' && (entitiesSeen.indexOf(literal.args[0]) > -1 || entitiesSeen.indexOf(literal.args[1]) > -1)) {
+                        return true;
+                    } else {
+                        return entitiesSeen.push(literal.args[0], literal.args[1]) && false;
+                    }
+                });
+            });
+        }
 
         function isValid(stacks : Stack[], relation : string, first : string, second : string) {
             var firstSize = first !== 'floor' ? state.objects[first].size : null;
@@ -177,7 +227,7 @@ module Interpreter {
                 (firstSize === 'small' && firstForm === 'box' && relation === 'ontop' && secondSize === 'small' && ['brick', 'pyramid'].indexOf(secondForm) > -1) ||  // Small boxes cannot be supported by small bricks or pyramids
                 (firstSize === 'large' && firstForm === 'box' && relation === 'ontop' && secondSize === 'large' && secondForm === 'pyramid') ||                       // Large boxes cannot be supported by large pyramids
                 (second === 'floor' && ['ontop', 'above'].indexOf(relation) === -1) ||                                                                                // An object can only be ontop or above the floor
-                (first === 'floor')) {                                                                                                                                // The floor cannot be moved
+                (first === 'floor')) {                                                                                                                                // The floor cannot be moved
                 return false;
             }
 
