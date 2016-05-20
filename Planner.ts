@@ -233,7 +233,7 @@ module Planner {
             var self = this;
 
             ['l', 'r', 'p', 'd'].forEach(function(command) {
-                var stacks = node.stacks;
+                var stacks = node.stacks.slice(0);
                 var holding = node.holding;
                 var arm = node.arm;
 
@@ -290,7 +290,7 @@ module Planner {
             public arm : number,
             public command? : string
         ) {
-            this.stacks = JSON.parse(JSON.stringify(stacks));
+            this.stacks = stacks.slice(0);
         }
 
         toString() : string {
