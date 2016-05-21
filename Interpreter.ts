@@ -138,7 +138,7 @@ module Interpreter {
 
             first.forEach(function(_first) {
                 second.forEach(function(_second) {
-                    if (_first !== _second && isValid(state.stacks, cmd.location.relation, _first, _second))
+                    if (isValid(cmd.location.relation, _first, _second))
                         interpretations.push([{polarity: true, relation: cmd.location.relation, args: [_first, _second]}]);
                 });
             });
@@ -213,7 +213,9 @@ module Interpreter {
             });
         }
 
-        function isValid(stacks : Stack[], relation : string, first : string, second : string) {
+        function isValid(relation : string, first : string, second : string) {
+            if (first === second) return false;
+
             var firstSize = first !== 'floor' ? state.objects[first].size : null;
             var firstForm = first !== 'floor' ? state.objects[first].form : null;
             var secondSize = second !== 'floor' ? state.objects[second].size : null;
