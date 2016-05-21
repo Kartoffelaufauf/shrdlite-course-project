@@ -116,6 +116,7 @@ module Planner {
             });
 
             console.log('Goal count: ' + goalCount);
+            console.log('Plan length:' + plan.length);
         }
 
         return plan;
@@ -173,8 +174,23 @@ module Planner {
                         _heuristics += numToMove * 4;
                         _heuristics += firstStackIndex >= secondStackIndex ? firstStackIndex - secondStackIndex + 1 : 0;
                         _heuristics += [first, second].indexOf(n.holding) > -1 ? 1 : 2;
+
+                        /*if (!holdingOneOfThem) {
+                            if (secondStackIndex === 0 && firstStackIndex === n.stacks.length - 1) {
+                                _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 2 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1;
+                            } else if (secondStackIndex === 0) {
+                                _heuristics += Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4 + 1;
+                            } else if (firstStackIndex === n.stacks.length - 1) {
+                                _heuristics += Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4 + 1;
+                            } else {
+                                _heuristics += Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1;
+                            }
+                        } else {
+                            _heuristics += n.holding === first ? (n.arm < secondStackIndex ? 1 : n.arm - secondStackIndex + 2) : (n.arm > firstStackIndex ? 1 : firstStackIndex - n.arm + 2);
+                        }*/
+
                     } else if (condition.relation === 'beside' && !(stackDifference === 1 && !holdingOneOfThem)) {
-                        _heuristics += !holdingOneOfThem ? Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst, Math.abs(secondStackIndex - n.arm) + numAboveSecond) + 1 + Math.abs(Math.abs(firstStackIndex - secondStackIndex) - 1) + 1 : Math.min(Math.abs(firstStackIndex - n.arm), Math.abs(secondStackIndex - n.arm));
+                        _heuristics += !holdingOneOfThem ? Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) : n.holding === first ? Math.abs(secondStackIndex - n.arm) : Math.abs(firstStackIndex - n.arm);
                     } else if (['inside', 'ontop'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos === secondStackPos + 1 && !holdingOneOfThem)) {
                         _heuristics += n.holding !== first ? Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1 : Math.abs(secondStackIndex - n.arm) + (numAboveSecond * 4) + 1;
                     } else if (['above', 'under'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos > secondStackPos && !holdingOneOfThem)) {
