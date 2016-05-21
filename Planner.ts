@@ -141,12 +141,13 @@ module Planner {
 
             interpretation.forEach(function(condition) {
                 var first = condition.args[0];
+
                 var firstStackIndex = getStackIndex(n.stacks, first) || n.arm;
+                var firstStackPos = n.stacks[firstStackIndex].indexOf(first);
+                var numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
 
                 if (condition.relation === 'holding' && n.holding !== first) {
-                    _heuristics += n.holding ? 2 : 1;
-                    _heuristics += Math.abs(n.arm - firstStackIndex);
-                    _heuristics += (n.stacks[firstStackIndex].length - n.stacks[firstStackIndex].indexOf(first) - 1) * 4;
+                    _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + (n.holding ? 2 : 1);
                 } else {
                     var second = condition.args[1];
 
@@ -155,14 +156,15 @@ module Planner {
                         var tmp = first;
                         first = second;
                         second = tmp;
+
                         firstStackIndex = getStackIndex(n.stacks, first) || n.arm;
+                        firstStackPos = n.stacks[firstStackIndex].indexOf(first);
+                        numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
                     }
 
                     var secondStackIndex = getStackIndex(n.stacks, second) || n.arm;
                     var stackDifference = Math.abs(firstStackIndex - secondStackIndex);
-                    var firstStackPos = n.stacks[firstStackIndex].indexOf(first);
                     var secondStackPos = n.stacks[secondStackIndex].indexOf(second);
-                    var numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
                     var numAboveSecond = secondStackPos === -1 ? 0 : (n.stacks[secondStackIndex].length - secondStackPos - 1);
                     var holdingOneOfThem = firstStackPos === -1 || secondStackPos === -1;
 
