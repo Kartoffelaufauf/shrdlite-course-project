@@ -134,14 +134,33 @@ module Interpreter {
                 first = state.holding !== null ? [state.holding] : [];
             }
 
-            var second : string[] = getEntities(state, cmd.location.entity.object);
+            if (cmd.location.entity.quantifier === 'any') {
+                var newCommand = {
+                    command: 'move',
+                    entity: {
+                        quantifier: 'any',
+                        object: cmd.location.entity.object.object
+                    },
+                    location: cmd.location.entity.object.location
+                };
 
-            first.forEach(function(_first) {
-                second.forEach(function(_second) {
-                    if (isValid(cmd.location.relation, _first, _second))
-                        interpretations.push([{polarity: true, relation: cmd.location.relation, args: [_first, _second]}]);
+                interpretCommand(newCommand, state).forEach(function(interpretation) {
+                    first.forEach(function(_first) {
+                        if (isValid(cmd.location.relation, _first, interpretation[0].args[0])) {
+                            interpretations.push(interpretation.concat({polarity: true, relation: cmd.location.relation, args: [_first, interpretation[0].args[0]]}));
+                        }
+                    });
                 });
-            });
+            } else {
+                var second : string[] = getEntities(state, cmd.location.entity.object);
+
+                first.forEach(function(_first) {
+                    second.forEach(function(_second) {
+                        if (isValid(cmd.location.relation, _first, _second))
+                            interpretations.push([{polarity: true, relation: cmd.location.relation, args: [_first, _second]}]);
+                    });
+                });
+            }
 
             if (cmd.command === 'move' && (cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all')) {
                 if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
