@@ -177,11 +177,11 @@ module Planner {
 
                         /*if (!holdingOneOfThem) {
                             if (secondStackIndex === 0 && firstStackIndex === n.stacks.length - 1) {
-                                _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 2 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1;
+                                _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 2 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + 1;
                             } else if (secondStackIndex === 0) {
-                                _heuristics += Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4 + 1;
+                                _heuristics += Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4 + 1 + Math.abs(firstStackIndex - secondStackIndex) + 2;
                             } else if (firstStackIndex === n.stacks.length - 1) {
-                                _heuristics += Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4 + 1;
+                                _heuristics += Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4 + 1 + Math.abs(firstStackIndex - secondStackIndex);
                             } else {
                                 _heuristics += Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1;
                             }
