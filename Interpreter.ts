@@ -134,20 +134,54 @@ module Interpreter {
                 first = state.holding !== null ? [state.holding] : [];
             }
 
-            var second : string[] = getEntities(state, cmd.location.entity.object);
+            var doRecursion = cmd.location.entity.quantifier === 'any' && cmd.location.entity.object.object;
 
-            first.forEach(function(_first) {
-                second.forEach(function(_second) {
-                    if (isValid(cmd.location.relation, _first, _second))
-                        interpretations.push([{polarity: true, relation: cmd.location.relation, args: [_first, _second]}]);
+            if (doRecursion) {
+                var newCommand = {
+                    command: 'move',
+                    entity: {
+                        quantifier: 'any',
+                        object: cmd.location.entity.object.object
+                    },
+                    location: cmd.location.entity.object.location
+                };
+
+                interpretCommand(newCommand, state).forEach(function(interpretation) {
+                    var interpretationCopy = interpretation.slice(0);
+
+                    first.forEach(function(_first) {
+                        if (cmd.entity.quantifier === 'all') {
+                            if (isValid(cmd.location.relation, _first, interpretation[interpretation.length - 1].args[0])) {
+                                interpretationCopy.push({polarity: true, relation: cmd.location.relation, args: [_first, interpretation[interpretation.length - 1].args[0]]});
+                            }
+                        } else {
+                            if (isValid(cmd.location.relation, _first, interpretation[interpretation.length - 1].args[0])) {
+                                interpretations.push(interpretation.concat({polarity: true, relation: cmd.location.relation, args: [_first, interpretation[interpretation.length - 1].args[0]]}));
+                            }
+                        }
+                    });
+
+                    if (cmd.entity.quantifier === 'all')
+                        interpretations.push(interpretationCopy);
                 });
-            });
+            } else {
+                var second : string[] = getEntities(state, cmd.location.entity.object);
+
+                first.forEach(function(_first) {
+                    second.forEach(function(_second) {
+                        if (isValid(cmd.location.relation, _first, _second))
+                            interpretations.push([{polarity: true, relation: cmd.location.relation, args: [_first, _second]}]);
+                    });
+                });
+            }
 
             if (cmd.command === 'move' && (cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all')) {
-                if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
-                    interpretations = allQuantifierValidator(first, interpretations);
-                } else {
-                    interpretations = [Array.prototype.concat.apply([], interpretations)];
+                if (!doRecursion) {
+                    if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
+                        interpretations = allQuantifierValidator(first, interpretations);
+                    } else {
+                        interpretations = [Array.prototype.concat.apply([], interpretations)];
+                    }
                 }
 
                 // The floor can support at most N objects (beside each other)
