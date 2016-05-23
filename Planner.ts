@@ -115,8 +115,9 @@ module Planner {
         return plan;
     }
 
-    function getStackIndex(stacks : Stack[], entity : string) : number {
-        var stackIndex : number;
+    function getStackIndex(stacks : Stack[], entity : string, _default? : number) : number {
+        var stackIndex = _default;
+
         for (var i = 0; i < stacks.length; i++) {
             if (stacks[i].indexOf(entity) > -1) {
                 stackIndex = i;
@@ -197,7 +198,7 @@ module Planner {
             interpretation.forEach(function(condition) {
                 var first = condition.args[0];
 
-                var firstStackIndex = getStackIndex(n.stacks, first) || n.arm;
+                var firstStackIndex = getStackIndex(n.stacks, first, n.arm);
                 var firstStackPos = n.stacks[firstStackIndex].indexOf(first);
                 var numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
 
@@ -212,37 +213,41 @@ module Planner {
                         first = second;
                         second = tmp;
 
-                        firstStackIndex = getStackIndex(n.stacks, first) || n.arm;
+                        firstStackIndex = getStackIndex(n.stacks, first, n.arm);
                         firstStackPos = n.stacks[firstStackIndex].indexOf(first);
                         numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
                     }
 
-                    var secondStackIndex = getStackIndex(n.stacks, second) || n.arm;
+                    var secondStackIndex = getStackIndex(n.stacks, second, n.arm);
                     var stackDifference = Math.abs(firstStackIndex - secondStackIndex);
                     var secondStackPos = n.stacks[secondStackIndex].indexOf(second);
                     var numAboveSecond = secondStackPos === -1 ? 0 : (n.stacks[secondStackIndex].length - secondStackPos - 1);
                     var holdingOneOfThem = firstStackPos === -1 || secondStackPos === -1;
 
                     if (['leftof', 'rightof'].indexOf(condition.relation) > -1 && !(firstStackIndex < secondStackIndex && !holdingOneOfThem)) {
-                        var numToMove = secondStackIndex === 0 ? numAboveSecond : (firstStackIndex === n.stacks.length - 1 ? numAboveFirst : Math.min(numAboveFirst, numAboveSecond));
-                        _heuristics += numToMove * 4;
-                        _heuristics += firstStackIndex >= secondStackIndex ? firstStackIndex - secondStackIndex + 1 : 0;
-                        _heuristics += [first, second].indexOf(n.holding) > -1 ? 1 : 2;
-
-                        /*if (!holdingOneOfThem) {
+                        if (!holdingOneOfThem) {
                             if (secondStackIndex === 0 && firstStackIndex === n.stacks.length - 1) {
-                                _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 2 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + 1;
+                                _heuristics += Math.min(Math.abs(firstStackIndex - n.arm), Math.abs(secondStackIndex - n.arm)) + Math.abs(firstStackIndex - secondStackIndex) * 2 + (numAboveFirst + numAboveSecond) * 4 + 2;
                             } else if (secondStackIndex === 0) {
                                 _heuristics += Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4 + 1 + Math.abs(firstStackIndex - secondStackIndex) + 2;
                             } else if (firstStackIndex === n.stacks.length - 1) {
-                                _heuristics += Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4 + 1 + Math.abs(firstStackIndex - secondStackIndex);
+                                _heuristics += Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4 + 1 + Math.abs(firstStackIndex - secondStackIndex) + 2;
                             } else {
-                                _heuristics += Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1;
+                                _heuristics += Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + 2;
                             }
                         } else {
-                            _heuristics += n.holding === first ? (n.arm < secondStackIndex ? 1 : n.arm - secondStackIndex + 2) : (n.arm > firstStackIndex ? 1 : firstStackIndex - n.arm + 2);
-                        }*/
+                            if (n.holding === first && n.arm < secondStackIndex || n.holding === second && n.arm > firstStackIndex) {
+                                _heuristics += 1;
+                            } else {
+                                _heuristics += n.holding === first ? n.arm - secondStackIndex + 2 : firstStackIndex - n.arm + 2;
 
+                                if (n.holding === first && secondStackIndex === 0) {
+                                    _heuristics += numAboveSecond * 4 + 3;
+                                } else if (n.holding === second && firstStackIndex === n.stacks.length - 1) {
+                                    _heuristics += numAboveFirst * 4 + 3;
+                                }
+                            }
+                        }
                     } else if (condition.relation === 'beside' && !(stackDifference === 1 && !holdingOneOfThem)) {
                         _heuristics += !holdingOneOfThem ? Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) : n.holding === first ? Math.abs(secondStackIndex - n.arm) : Math.abs(firstStackIndex - n.arm);
                     } else if (['inside', 'ontop'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos === secondStackPos + 1 && !holdingOneOfThem)) {
