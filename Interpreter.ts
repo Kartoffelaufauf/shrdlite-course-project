@@ -110,10 +110,14 @@ module Interpreter {
         var objects : string[] = Array.prototype.concat.apply([], state.stacks);
         var interpretations : DNFFormula = [];
 
+        console.log(JSON.stringify(cmd));
+
         if (cmd.command === 'where') {
             getEntities(state, cmd.entity.object).forEach(function(entity) {
                 interpretations.push([{polarity: true, relation: 'where', args: [entity]}]);
             });
+        } else if (cmd.command === 'drop' && state.holding) {
+            interpretations.push([{polarity: true, relation: 'above', args: [state.holding, 'floor']}]);
         } else if (cmd.command === 'take') {
             var entities = getEntities(state, cmd.entity.object);
 

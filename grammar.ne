@@ -41,6 +41,7 @@ command --> take entity           {% R({command:"take", entity:1}) %}
 command --> move  it    location  {% R({command:"put", location:2}) %}
 command --> move entity location  {% R({command:"move", entity:1, location:2}) %}
 command --> where_is entity       {% R({command:"where", entity:1}) %}
+command --> drop it               {% R({command:"drop"}) %}
 
 location --> relation entity  {% R({relation:0, entity:1}) %}
 
@@ -98,6 +99,7 @@ form --> "floor"    {% R("floor") %}
 
 take --> "take" | "grasp" | "pick" "up"
 move --> "move" | "put" | "drop"
+drop --> "drop"
 it --> "it"
 
 that_is  --> "that" "is"
