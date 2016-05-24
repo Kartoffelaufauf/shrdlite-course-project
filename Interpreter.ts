@@ -109,7 +109,7 @@ module Interpreter {
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
         var objects : string[] = Array.prototype.concat.apply([], state.stacks);
         var interpretations : DNFFormula = [];
-        
+
         if (cmd.command === 'where') {
             getEntities(state, cmd.entity.object).forEach(function(entity) {
                 interpretations.push([{polarity: true, relation: 'where', args: [entity]}]);
@@ -179,8 +179,8 @@ module Interpreter {
 
             if (cmd.command === 'move' && (cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all')) {
                 if (!doRecursion) {
-                    if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
-                        interpretations = allQuantifierValidator(first, interpretations);
+                    if (['ontop', 'inside', 'above', 'under'].indexOf(cmd.location.relation) > -1) {
+                        interpretations = allQuantifierValidator(first, interpretations, state.objects, cmd.location.relation);
                     } else {
                         interpretations = [Array.prototype.concat.apply([], interpretations)];
                     }
@@ -205,7 +205,7 @@ module Interpreter {
 
         // Inner helper functions below
 
-        function allQuantifierValidator(entities : string[], interpretations : Literal[][]) {
+        function allQuantifierValidator(entities : string[], interpretations : Literal[][], objects : { [s:string]: ObjectDefinition; }, relation : string) {
             function cartesian(arg : Literal[][]) : Literal[][] {
                 var r : Literal[][] = [], max = arg.length-1;
                 function helper(arr : Literal[], i : number) {
@@ -239,13 +239,26 @@ module Interpreter {
             return cartesian(groupLiteralsByEntityValues).filter(function(combination) {
                 var entitiesSeen : string[] = [];
 
-                return !combination.some(function(literal) {
-                    if (literal.args[1] !== 'floor' && (entitiesSeen.indexOf(literal.args[0]) > -1 || entitiesSeen.indexOf(literal.args[1]) > -1)) {
-                        return true;
-                    } else {
-                        return entitiesSeen.push(literal.args[0], literal.args[1]) && false;
-                    }
-                });
+                if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
+                    return !combination.some(function(literal) {
+                        if (literal.args[1] !== 'floor' && (entitiesSeen.indexOf(literal.args[0]) > -1 || entitiesSeen.indexOf(literal.args[1]) > -1)) {
+                            return true;
+                        } else {
+                            return entitiesSeen.push(literal.args[0], literal.args[1]) && false;
+                        }
+                    });
+                } else {
+                    return !combination.some(function(literal) {
+                        var isBall = objects[literal.args[0]].form === 'ball';
+
+                        if (literal.args[1] !== 'floor' && isBall && entitiesSeen.indexOf(literal.args[1]) > -1) {
+                            return true;
+                        } else {
+                            if (isBall) entitiesSeen.push(literal.args[1]);
+                            return false;
+                        }
+                    });
+                }
             });
         }
 
@@ -258,6 +271,7 @@ module Interpreter {
             var secondForm = second !== 'floor' ? state.objects[second].form : null;
 
             if ((second !== 'floor' && ['inside', 'ontop', 'above'].indexOf(relation) > -1 && firstSize === 'large' && secondSize === 'small') ||                     // Small objects cannot support large objects
+                (relation === 'under' && firstSize === 'small' && secondSize === 'large') ||
                 (firstForm === 'ball' && !(relation === 'inside' || (relation === 'ontop' ? second === 'floor' : true))) ||                                           // Balls must be in boxes or on the floor, otherwise they roll away
                 (second !== 'floor' && ['ontop', 'above'].indexOf(relation) > -1 && secondForm === 'ball') ||                                                         // Balls cannot support anything
                 !(relation === 'inside' ? secondForm === 'box' : (relation === 'ontop' ? (second === 'floor' || secondForm !== 'box') : true)) ||                     // Objects are “inside” boxes, but “ontop” of other objects
