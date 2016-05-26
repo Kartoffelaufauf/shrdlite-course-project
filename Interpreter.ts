@@ -178,12 +178,41 @@ module Interpreter {
             }
 
             if (cmd.command === 'move' && (cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all')) {
-                if (!doRecursion) {
-                    if (['ontop', 'inside', 'above', 'under'].indexOf(cmd.location.relation) > -1) {
-                        interpretations = allQuantifierValidator(first, interpretations, state.objects, cmd.location.relation);
+                if (!doRecursion && interpretations.length > 0)
+                    interpretations = allQuantifierValidator(interpretations, state.objects, cmd.location.relation, cmd.entity.quantifier, cmd.location.entity.quantifier);
+
+                if (['inside', 'ontop'].indexOf(cmd.location.relation) > -1) {
+                    if (cmd.entity.quantifier === 'all' && cmd.location.entity.quantifier === 'all') {
+                        if (!(first.length === 1 && second.length === 1)) interpretations = [];
+                    } else if (cmd.entity.quantifier === 'all') {
+                        if (!(first.length <= second.length)) interpretations = [];
                     } else {
-                        interpretations = [Array.prototype.concat.apply([], interpretations)];
+                        if (!(first.length >= second.length)) interpretations = [];
                     }
+                }
+
+                if (cmd.entity.quantifier === 'all') {
+                    interpretations = interpretations.filter(function(interpretation) {
+                        var _first = first.slice(0);
+
+                        interpretation.forEach(function(condition) {
+                            _first.splice(_first.indexOf(condition.args[0]), 1);
+                        });
+
+                        return _first.length === 0;
+                    });
+                }
+
+                if (cmd.location.entity.quantifier === 'all') {
+                    interpretations = interpretations.filter(function(interpretation) {
+                        var _second = second.slice(0);
+
+                        interpretation.forEach(function(condition) {
+                            _second.splice(_second.indexOf(condition.args[1]), 1);
+                        });
+
+                        return _second.length === 0;
+                    });
                 }
 
                 // The floor can support at most N objects (beside each other)
@@ -205,7 +234,30 @@ module Interpreter {
 
         // Inner helper functions below
 
-        function allQuantifierValidator(entities : string[], interpretations : Literal[][], objects : { [s:string]: ObjectDefinition; }, relation : string) {
+        function allQuantifierValidator(interpretations : Literal[][], objects : { [s:string]: ObjectDefinition; }, relation : string, fromQuantifier : string, toQuantifier : string) {
+            if (fromQuantifier === 'all' && toQuantifier === 'all') {
+                var result = [Array.prototype.concat.apply([], interpretations)];
+
+                if (['above', 'under'].indexOf(relation) > -1) {
+                    var entitiesSeen : string[] = [];
+
+                    result[0].forEach(function(condition : Literal) {
+                        var entity = relation === 'above' ? condition.args[0] : condition.args[1];
+
+                        if (objects[entity].form === 'ball' && entitiesSeen.indexOf(entity) === -1)
+                            entitiesSeen.push(entity);
+                    });
+
+                    if (entitiesSeen.length > 1) {
+                        return [];
+                    } else {
+                        return result;
+                    }
+                } else {
+                    return result;
+                }
+            }
+
             function cartesian(arg : Literal[][]) : Literal[][] {
                 var r : Literal[][] = [], max = arg.length-1;
                 function helper(arr : Literal[], i : number) {
@@ -223,23 +275,36 @@ module Interpreter {
             }
 
             var groupLiteralsByEntity: { [s: string] : Literal[]; } = {};
-            entities.forEach(function(entity) {
-                groupLiteralsByEntity[entity] = [];
-            });
-
             interpretations.forEach(function(condition) {
-                groupLiteralsByEntity[condition[0].args[0]].push(condition[0]);
+                var entity = fromQuantifier === 'all' ? condition[0].args[0] : condition[0].args[1];
+
+                if (typeof groupLiteralsByEntity[entity] === 'undefined') groupLiteralsByEntity[entity] = [];
+                groupLiteralsByEntity[entity].push(condition[0]);
             });
 
             var groupLiteralsByEntityValues : Literal[][] = [];
-            entities.forEach(function(entity) {
-                groupLiteralsByEntityValues.push(groupLiteralsByEntity[entity]);
-            });
+            for (var entity in groupLiteralsByEntity) {
+                if (groupLiteralsByEntity.hasOwnProperty(entity)) {
+                    groupLiteralsByEntityValues.push(groupLiteralsByEntity[entity]);
+                }
+            }
 
             return cartesian(groupLiteralsByEntityValues).filter(function(combination) {
                 var entitiesSeen : string[] = [];
 
-                if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
+                if (['leftof', 'rightof', 'beside'].indexOf(cmd.location.relation) > -1) {
+                    if (toQuantifier === 'all') {
+                        return !combination.some(function(literal) {
+                            if (entitiesSeen.length > 0 && entitiesSeen.indexOf(literal.args[0]) === -1) {
+                                return true;
+                            } else {
+                                return entitiesSeen.push(literal.args[0]) && false;
+                            }
+                        });
+                    } else {
+                        return true;
+                    }
+                } else if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
                     return !combination.some(function(literal) {
                         if (literal.args[1] !== 'floor' && (entitiesSeen.indexOf(literal.args[0]) > -1 || entitiesSeen.indexOf(literal.args[1]) > -1)) {
                             return true;
