@@ -20,7 +20,11 @@ TODO: PlannerGraph (+ outgoingEdges), PlannerNode, goal, heuristics, aStarSearch
 Here is a list as well as descriptions of the extensions that we have implemented in the project.
 
 ## Be able to handle all quantifiers in a sensible manner
-TODO: cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all' -> just concat vs. allQuantifierValidator
+This extension makes it possible to use the *all* quantifier, e.g. *"move all balls left of a brick"*.
+
+We implemented this by, in the interpreter, concatenating the list of possible interpretations in those cases where the *all* quantifier is used. If the relation is one of the following: *ontop*, *inside*, *above* or *under* we use the function *allQuantifierValidator* to concatenating the list of possibilities, as those relations need a bit more calculations.
+
+In the function *allQuantifierValidator* the possible interpretations is grouped by the first entity, from which we then calculate the cartesian product. From the list of those cartesian products we then filter out the ones that are incorrect.
 
 ## Make the planner describe what it is doing, in a way that is understandable to humans
 This extension has the planner describe what it is doing, in a way that is understandable to humans, e.g. *"Picking up the blue box"*.
@@ -30,7 +34,7 @@ We implemented this by having the *PlannerNode* class have an optional *comment*
 ## New linguistic structures to the grammar: user questions (e.g., "where is the white ball?")
 This extension makes it possible to have the program describe the positions of the entities matched by a set of conditions.
 
-This is made possible by extending the grammar with a new *"where is"* command which in the interpreter is interpreted as just returning a list of the entities matched by the conditions. This list is then iterated over in the planner which in turn returns the positions of the entities in a way that is understandable to humans, naming which stack and *describing the entity which it is on top/inside of* just enough to have them be unique in that very stack. If the entity is not unique in the stack, it describes which one of them using an enumeration. This description is developed inside the function *getDescription*.
+This is made possible by extending the grammar with a new *where is* command which in the interpreter is interpreted as just returning a list of the entities matched by the conditions. This list is then iterated over in the planner which in turn returns the positions of the entities in a way that is understandable to humans, naming which stack and *describing the entity which it is on top/inside of* just enough to have them be unique in that very stack. If the entity is not unique in the stack, it describes which one of them using an enumeration. This description is developed inside the function *getDescription*.
 
 ## More fine-grained cost calculation, taking the height of the stacks into account
 We believe that we have a pretty good heuristics, with a good balance between accuracy and speed - and it does indeed take the height of the stacks into account.
@@ -42,9 +46,9 @@ This is made possible by, sort of, breaking the query into two parts, in this ca
 
 These requests can be made pretty long and complicated, as *"move the white ball inside a yellow box on a yellow brick on a red plank"* in the starting state of the world *complex*.
 
-The exception is the *"the"* quantifier, where we interpret it as the entity matching the condition must already exist, and may not be created.
+The exception is the *the* quantifier, where we interpret it as the entity matching the condition must already exist, and may not be created.
 
 ## Custom command to drop the entity currently held by the claw
 This extension makes it possible to have the program drop the entity currently held by the claw.
 
-This is made possible by extending the grammar with a new *"drop it"* command which in the interpreter is interpreted as having the entity currently held by the claw moved *above the floor*.
+This is made possible by extending the grammar with a new *drop it* command which in the interpreter is interpreted as having the entity currently held by the claw moved *above the floor*.
