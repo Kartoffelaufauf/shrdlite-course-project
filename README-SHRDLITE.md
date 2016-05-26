@@ -10,6 +10,12 @@ The interpreter implementation is pretty straight forward (excluding the extensi
 ## Planner
 TODO: PlannerGraph (+ outgoingEdges), PlannerNode, goal, heuristics, aStarSearch
 
+# Files changed
+* Graph.ts
+* Interpreter.ts
+* Planner.ts
+* grammar.ne
+
 # Implemented extensions
 Here is a list as well as descriptions of the extensions that we have implemented in the project.
 
