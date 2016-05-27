@@ -266,7 +266,7 @@ module Interpreter {
 
             var groupConditionsByEntity: { [s: string] : Literal[]; } = {};
             interpretations.forEach(function(interpretation) {
-                var entity = toQuantifier === 'all' ? interpretation[0].args[1] : interpretation[0].args[0];
+                var entity = fromQuantifier === 'all' ? interpretation[0].args[0] : interpretation[0].args[1];
 
                 if (typeof groupConditionsByEntity[entity] === 'undefined') groupConditionsByEntity[entity] = [];
                 groupConditionsByEntity[entity].push(interpretation[0]);
@@ -281,8 +281,7 @@ module Interpreter {
 
             return cartesian(groupConditionsByEntityValues).filter(function(combination) {
                 var entitiesSeen : string[] = [];
-
-                /* TODO: TEST THIS */
+                
                 if (['leftof', 'rightof', 'beside'].indexOf(cmd.location.relation) > -1) {
                     if (toQuantifier === 'all') {
                         return !combination.some(function(condition) {
