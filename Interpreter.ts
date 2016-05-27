@@ -128,14 +128,7 @@ module Interpreter {
                 interpretations.push([{polarity: true, relation: 'holding', args: [entities[0]]}]);
             }
         } else if (['move', 'put'].indexOf(cmd.command) > -1) {
-            var first : string[];
-
-            if (cmd.command === 'move') {
-                first = getEntities(state, cmd.entity.object);
-            } else {
-                first = state.holding !== null ? [state.holding] : [];
-            }
-
+            var first = cmd.command === 'move' ? getEntities(state, cmd.entity.object) : (state.holding !== null ? [state.holding] : []);
             var doRecursion = cmd.location.entity.quantifier === 'any' && cmd.location.entity.object.object;
 
             if (doRecursion) {
@@ -167,7 +160,7 @@ module Interpreter {
                         interpretations.push(interpretationCopy);
                 });
             } else {
-                var second : string[] = getEntities(state, cmd.location.entity.object);
+                var second = getEntities(state, cmd.location.entity.object);
 
                 first.forEach(function(_first) {
                     second.forEach(function(_second) {
@@ -181,6 +174,7 @@ module Interpreter {
                 if (!doRecursion && interpretations.length > 0)
                     interpretations = allQuantifierValidator(interpretations, state.objects, cmd.location.relation, cmd.entity.quantifier, cmd.location.entity.quantifier);
 
+                // Make sure there is enough entities to fulfill the request
                 if (['inside', 'ontop'].indexOf(cmd.location.relation) > -1) {
                     if (cmd.entity.quantifier === 'all' && cmd.location.entity.quantifier === 'all') {
                         if (!(first.length === 1 && second.length === 1)) interpretations = [];
@@ -191,33 +185,26 @@ module Interpreter {
                     }
                 }
 
-                if (cmd.entity.quantifier === 'all') {
-                    interpretations = interpretations.filter(function(interpretation) {
-                        var _first = first.slice(0);
+                // Make sure we got all entities matched by the all quantifier
+                interpretations = interpretations.filter(function(interpretation) {
+                    var _first = first.slice(0);
+                    var _second = second.slice(0);
 
-                        interpretation.forEach(function(condition) {
-                            _first.splice(_first.indexOf(condition.args[0]), 1);
-                        });
-
-                        return _first.length === 0;
+                    interpretation.forEach(function(condition) {
+                        _first.splice(_first.indexOf(condition.args[0]), 1);
+                        _second.splice(_second.indexOf(condition.args[1]), 1);
                     });
-                }
 
-                if (cmd.location.entity.quantifier === 'all') {
-                    interpretations = interpretations.filter(function(interpretation) {
-                        var _second = second.slice(0);
+                    var fromAllCheck = cmd.entity.quantifier === 'all' ? _first.length === 0 : true;
+                    var toAllCheck = cmd.location.entity.quantifier  === 'all' ? _second.length === 0 : true;
 
-                        interpretation.forEach(function(condition) {
-                            _second.splice(_second.indexOf(condition.args[1]), 1);
-                        });
-
-                        return _second.length === 0;
-                    });
-                }
+                    return fromAllCheck && toAllCheck;
+                });
 
                 // The floor can support at most N objects (beside each other)
                 interpretations = interpretations.filter(function(interpretation) {
                     var nbrEntitiesOnTopOfFloor = 0;
+
                     interpretation.forEach(function(condition) {
                         if (condition.relation === 'ontop' && condition.args[1] === 'floor') nbrEntitiesOnTopOfFloor++;
                     });
@@ -232,7 +219,7 @@ module Interpreter {
         else
             throw "No interpretations possible";
 
-        // Inner helper functions below
+        // ### HELPER FUNCTIONS BELOW ###
 
         function allQuantifierValidator(interpretations : Literal[][], objects : { [s:string]: ObjectDefinition; }, relation : string, fromQuantifier : string, toQuantifier : string) {
             if (fromQuantifier === 'all' && toQuantifier === 'all') {
@@ -259,67 +246,73 @@ module Interpreter {
             }
 
             function cartesian(arg : Literal[][]) : Literal[][] {
-                var r : Literal[][] = [], max = arg.length-1;
+                var r : Literal[][] = [], max = arg.length - 1;
+
                 function helper(arr : Literal[], i : number) {
-                    for (var j=0, l=arg[i].length; j<l; j++) {
+                    for (var j = 0, j < arg[i].length; j++) {
                         var a = arr.slice(0);
                         a.push(arg[i][j]);
+
                         if (i == max)
                             r.push(a);
                         else
                             helper(a, i+1);
                     }
                 }
+
                 helper([], 0);
                 return r;
             }
 
-            var groupLiteralsByEntity: { [s: string] : Literal[]; } = {};
-            interpretations.forEach(function(condition) {
-                var entity = fromQuantifier === 'all' ? condition[0].args[0] : condition[0].args[1];
+            var groupConditionsByEntity: { [s: string] : Literal[]; } = {};
+            interpretations.forEach(function(interpretation) {
+                var entity = toQuantifier === 'all' ? interpretation[0].args[1] : interpretation[0].args[0];
 
-                if (typeof groupLiteralsByEntity[entity] === 'undefined') groupLiteralsByEntity[entity] = [];
-                groupLiteralsByEntity[entity].push(condition[0]);
+                if (typeof groupConditionsByEntity[entity] === 'undefined') groupConditionsByEntity[entity] = [];
+                groupConditionsByEntity[entity].push(interpretation[0]);
             });
 
-            var groupLiteralsByEntityValues : Literal[][] = [];
-            for (var entity in groupLiteralsByEntity) {
-                if (groupLiteralsByEntity.hasOwnProperty(entity)) {
-                    groupLiteralsByEntityValues.push(groupLiteralsByEntity[entity]);
+            var groupConditionsByEntityValues : Literal[][] = [];
+            for (var entity in groupConditionsByEntity) {
+                if (groupConditionsByEntity.hasOwnProperty(entity)) {
+                    groupConditionsByEntityValues.push(groupConditionsByEntity[entity]);
                 }
             }
 
-            return cartesian(groupLiteralsByEntityValues).filter(function(combination) {
+            return cartesian(groupConditionsByEntityValues).filter(function(combination) {
                 var entitiesSeen : string[] = [];
 
+                /* TODO: TEST THIS */
                 if (['leftof', 'rightof', 'beside'].indexOf(cmd.location.relation) > -1) {
                     if (toQuantifier === 'all') {
-                        return !combination.some(function(literal) {
-                            if (entitiesSeen.length > 0 && entitiesSeen.indexOf(literal.args[0]) === -1) {
+                        return !combination.some(function(condition) {
+                            if (entitiesSeen.length > 0 && entitiesSeen.indexOf(condition.args[0]) === -1) {
                                 return true;
                             } else {
-                                return entitiesSeen.push(literal.args[0]) && false;
+                                return entitiesSeen.push(condition.args[0]) && false;
                             }
                         });
                     } else {
                         return true;
                     }
                 } else if (['ontop', 'inside'].indexOf(cmd.location.relation) > -1) {
-                    return !combination.some(function(literal) {
-                        if (literal.args[1] !== 'floor' && (entitiesSeen.indexOf(literal.args[0]) > -1 || entitiesSeen.indexOf(literal.args[1]) > -1)) {
+                    // An entity cannot be ontop/inside multiple entities, and an entity cannot have multiple entities inside/ontop of it
+                    return !combination.some(function(condition) {
+                        if (condition.args[1] !== 'floor' && (entitiesSeen.indexOf(condition.args[0]) > -1 || entitiesSeen.indexOf(condition.args[1]) > -1)) {
                             return true;
                         } else {
-                            return entitiesSeen.push(literal.args[0], literal.args[1]) && false;
+                            return entitiesSeen.push(condition.args[0], condition.args[1]) && false;
                         }
                     });
                 } else {
-                    return !combination.some(function(literal) {
-                        var isBall = objects[literal.args[0]].form === 'ball';
+                    // Multiple balls cannot be above or under the same thing
+                    return !combination.some(function(condition) {
+                        var isBall = objects[condition.args[0]].form === 'ball';
 
-                        if (literal.args[1] !== 'floor' && isBall && entitiesSeen.indexOf(literal.args[1]) > -1) {
+                        if (condition.args[1] !== 'floor' && isBall && entitiesSeen.indexOf(condition.args[1]) > -1) {
                             return true;
                         } else {
-                            if (isBall) entitiesSeen.push(literal.args[1]);
+                            if (isBall) entitiesSeen.push(condition.args[1]);
                             return false;
                         }
                     });
@@ -335,8 +328,8 @@ module Interpreter {
             var secondSize = second !== 'floor' ? state.objects[second].size : null;
             var secondForm = second !== 'floor' ? state.objects[second].form : null;
 
-            if ((second !== 'floor' && ['inside', 'ontop', 'above'].indexOf(relation) > -1 && firstSize === 'large' && secondSize === 'small') ||                     // Small objects cannot support large objects
-                (relation === 'under' && firstSize === 'small' && secondSize === 'large') ||
+            if ((second !== 'floor' && ['inside', 'ontop', 'above'].indexOf(relation) > -1 && firstSize === 'large' && secondSize === 'small') ||                     // Small objects cannot support large objects, pt. 1
+                (relation === 'under' && firstSize === 'small' && secondSize === 'large') ||                                                                          // Small objects cannot support large objects, pt. 2
                 (firstForm === 'ball' && !(relation === 'inside' || (relation === 'ontop' ? second === 'floor' : true))) ||                                           // Balls must be in boxes or on the floor, otherwise they roll away
                 (second !== 'floor' && ['ontop', 'above'].indexOf(relation) > -1 && secondForm === 'ball') ||                                                         // Balls cannot support anything
                 !(relation === 'inside' ? secondForm === 'box' : (relation === 'ontop' ? (second === 'floor' || secondForm !== 'box') : true)) ||                     // Objects are “inside” boxes, but “ontop” of other objects
