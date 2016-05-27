@@ -5,12 +5,18 @@ Here are high-level descriptions of the three main components of the project.
 The algorithm is implemented using a priority queue, in which we store custom queue elements that in turn store a node and the various cost values associated with that particular node (e.i. g and f costs) as well as a reference to a parent node (e.i. another custom queue element). This, in the end, results in a linked list which we walk through to get the final path from the start node to the goal node.
 
 ## Interpreter
-The interpreter implementation is pretty straight forward (excluding the extensions, explained in more detail in another section). The "magic" happens in the inner functions *getEntities* and *isValid*. The function *getEntities* returns all entities in the world that fulfill a specific condition and is implemented recursively to be able to handle more complex conditions. The function *isValid* returns whether or not a specific relation is valid between two entities, making sure the interpretations returned by the interpreter is indeed valid.
+The interpreter implementation (excluding the extensions, explained in more detail in another section) is pretty straight forward. The "magic" happens in the inner functions *getEntities* and *isValid*. The function *getEntities* returns all entities in the world that fulfill a specific condition and is implemented recursively to be able to handle more complex conditions. The function *isValid* returns whether or not a specific relation is valid between two entities, making sure the interpretations returned by the interpreter is indeed valid.
 
 ## Planner
-TODO: PlannerGraph (+ outgoingEdges), PlannerNode, goal, heuristics, aStarSearch
+The implementation of the planner mainly consists of searching, using the function *aStarSearch*, for a state that fulfills the user's request. The way we did this is by first creating the new class *PlannerGraph* which has the function *outgoingEdges*. The function *outgoingEdges* returns, given a *PlannerNode*, all *valid* states that the state can transform into.
 
-# Files changed
+The class *PlannerNode* is a new class that functions as a wrapper for a world state.
+
+Also, the search requires a *goal function*, which we named *goal*. It takes a *PlannerNode* and returns whether the embedded world state of the node fulfills all the conditions in *any* of the interpretations.
+
+Then we have the *heuristics function*, which we named *heuristics*. It takes a *PlannerNode* and returns the *lowest* approximate cost of reaching *any* of the valid world goal states, from the world state embedded in the *PlannerNode*. The calculations are pretty complicated and take, among other things, the stack heights into account.
+
+## Files changed
 * Graph.ts
 * Interpreter.ts
 * Planner.ts
@@ -24,7 +30,7 @@ This extension makes it possible to use the *all* quantifier, e.g. *"move all ba
 
 We implemented this by, in the interpreter, concatenating the list of possible interpretations in those cases where the *all* quantifier is used. We do this using the function *allQuantifierValidator*, as those relations need a bit more calculations.
 
-In the function *allQuantifierValidator*, the possible interpretations is grouped by the first entity, from which we then calculate the cartesian product. From the list of those cartesian products we then filter out the ones that are incorrect.
+In the function *allQuantifierValidator*, the possible interpretations are grouped by the first entity, from which we then calculate the cartesian product. From the list of those cartesian products we then filter out the ones that are incorrect.
 
 ## Make the planner describe what it is doing, in a way that is understandable to humans
 This extension has the planner describe what it is doing, in a way that is understandable to humans, e.g. *"Picking up the blue box"*.
