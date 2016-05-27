@@ -129,6 +129,8 @@ module Interpreter {
             }
         } else if (['move', 'put'].indexOf(cmd.command) > -1) {
             var first = cmd.command === 'move' ? getEntities(state, cmd.entity.object) : (state.holding !== null ? [state.holding] : []);
+
+            // Only do recursive deep world manipulation if possible
             var doRecursion = cmd.location.entity.quantifier === 'any' && cmd.location.entity.object.object;
 
             if (doRecursion) {
@@ -145,6 +147,7 @@ module Interpreter {
                     var interpretationCopy = interpretation.slice(0);
 
                     first.forEach(function(_first) {
+                        // If the all quantifier is used, group the interpretations together
                         if (cmd.entity.quantifier === 'all') {
                             if (isValid(cmd.location.relation, _first, interpretation[interpretation.length - 1].args[0])) {
                                 interpretationCopy.push({polarity: true, relation: cmd.location.relation, args: [_first, interpretation[interpretation.length - 1].args[0]]});
@@ -221,6 +224,7 @@ module Interpreter {
 
         // ### HELPER FUNCTIONS BELOW ###
 
+        // Calculate to possible and valid combinations of the interpretations when the all quantifier is used
         function allQuantifierValidator(interpretations : Literal[][], objects : { [s:string]: ObjectDefinition; }, relation : string, fromQuantifier : string, toQuantifier : string) {
             if (fromQuantifier === 'all' && toQuantifier === 'all') {
                 var result = [Array.prototype.concat.apply([], interpretations)];
@@ -281,8 +285,10 @@ module Interpreter {
 
             return cartesian(groupConditionsByEntityValues).filter(function(combination) {
                 var entitiesSeen : string[] = [];
-                
+
                 if (['leftof', 'rightof', 'beside'].indexOf(cmd.location.relation) > -1) {
+                    // If we want a single entity to be leftof/rightof/beside one or more other entities,
+                    // only keep the combination where all the conditions is going from the same entity
                     if (toQuantifier === 'all') {
                         return !combination.some(function(condition) {
                             if (entitiesSeen.length > 0 && entitiesSeen.indexOf(condition.args[0]) === -1) {
@@ -319,6 +325,7 @@ module Interpreter {
             });
         }
 
+        // Check if the relation between two entities is valid
         function isValid(relation : string, first : string, second : string) {
             if (first === second) return false;
 
@@ -343,6 +350,8 @@ module Interpreter {
             return true;
         }
 
+        // Get all entities in the world that fulfill a specific condition and
+        // do so recursively to be able to handle more complex conditions
         function getEntities(state : WorldState, condition : Parser.Object) : string[] {
             function getStackIndex(entity : string) : number {
                 var stackIndex : number;

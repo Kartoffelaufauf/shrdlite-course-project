@@ -22,9 +22,9 @@ Here is a list as well as descriptions of the extensions that we have implemente
 ## Be able to handle all quantifiers in a sensible manner
 This extension makes it possible to use the *all* quantifier, e.g. *"move all balls left of a brick"*.
 
-We implemented this by, in the interpreter, concatenating the list of possible interpretations in those cases where the *all* quantifier is used. If the relation is one of the following: *ontop*, *inside*, *above* or *under* we use the function *allQuantifierValidator* to concatenating the list of possibilities, as those relations need a bit more calculations.
+We implemented this by, in the interpreter, concatenating the list of possible interpretations in those cases where the *all* quantifier is used. We do this using the function *allQuantifierValidator*, as those relations need a bit more calculations.
 
-In the function *allQuantifierValidator* the possible interpretations is grouped by the first entity, from which we then calculate the cartesian product. From the list of those cartesian products we then filter out the ones that are incorrect.
+In the function *allQuantifierValidator*, the possible interpretations is grouped by the first entity, from which we then calculate the cartesian product. From the list of those cartesian products we then filter out the ones that are incorrect.
 
 ## Make the planner describe what it is doing, in a way that is understandable to humans
 This extension has the planner describe what it is doing, in a way that is understandable to humans, e.g. *"Picking up the blue box"*.
