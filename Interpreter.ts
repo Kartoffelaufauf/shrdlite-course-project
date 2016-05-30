@@ -253,7 +253,7 @@ module Interpreter {
                 var r : Literal[][] = [], max = arg.length - 1;
 
                 function helper(arr : Literal[], i : number) {
-                    for (var j = 0, j < arg[i].length; j++) {
+                    for (var j = 0; j < arg[i].length; j++) {
                         var a = arr.slice(0);
                         a.push(arg[i][j]);
 
