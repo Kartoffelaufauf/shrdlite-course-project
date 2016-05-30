@@ -79,7 +79,6 @@ module Planner {
         var plan : string[] = [];
 
         var start = new PlannerNode(state.stacks, state.holding, state.arm);
-
         if (interpretations[0][0].relation === 'where') {
             var locations : string[] = [];
 
@@ -131,12 +130,18 @@ module Planner {
     function getDescription(node : PlannerNode, objects : { [s:string]: ObjectDefinition; }, entity : string, action? : string) : string {
         var result = '';
 
+        // The result is what we finally write and here we trasform the first simple commands
+        // either picking up och putting
         if (action === 'p') {
             result = 'Picking up ';
         } else if (action === 'd') {
             result = 'Putting it ';
         }
 
+        //Here the full action of a command will be written to the final sentence that describes a node.
+        //Depending on which move is mad this is catched by if statements.
+        //We take in consideration to where the item is placed and if its placed above something we find it
+        //and display it for a better representation of where we placed a item.
         if (entity) {
             if (action !== 'p') result += objects[entity].form === 'box' ? 'inside ' : 'on ';
 
@@ -191,7 +196,6 @@ module Planner {
 
     function heuristics(interpretations : Interpreter.DNFFormula, n: PlannerNode) : number {
         var result : number[] = [];
-
         interpretations.forEach(function(interpretation) {
             var _heuristics = 0;
 
@@ -201,7 +205,10 @@ module Planner {
                 var firstStackIndex = getStackIndex(n.stacks, first, n.arm);
                 var firstStackPos = n.stacks[firstStackIndex].indexOf(first);
                 var numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
-
+                /**
+                * For a given condition we calculate the heuristics depending on which relation 
+                * and wheres the arm is located.
+                */
                 if (condition.relation === 'holding' && n.holding !== first) {
                     _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + (n.holding ? 2 : 1);
                 } else {
@@ -224,6 +231,8 @@ module Planner {
                     var numAboveSecond = secondStackPos === -1 ? 0 : (n.stacks[secondStackIndex].length - secondStackPos - 1);
                     var holdingOneOfThem = firstStackPos === -1 || secondStackPos === -1;
 
+                    //To get the right heuristics we need to take in considerations the relations of the elements in the world
+                    //this to be able to get the right element to move that is the most efficient. 
                     if (['leftof', 'rightof'].indexOf(condition.relation) > -1 && !(firstStackIndex < secondStackIndex && !holdingOneOfThem)) {
                         if (!holdingOneOfThem) {
                             if (secondStackIndex === 0 && firstStackIndex === n.stacks.length - 1) {
@@ -270,10 +279,12 @@ module Planner {
         goalCount++;
 
         var _goal = false;
-
+        // For each different interpretetion we check if the goal is reached.
+        // if one or more is fulfilled we changed the goal to be true.
         for (var i = 0; i < interpretations.length && !_goal; i++) {
             var conditionFulfilled = true;
-
+            // Checks so that a interpretation with its conditions is fullfield.
+            // if all conditions is fullfilled we return true or false 
             for (var j = 0; j < interpretations[i].length && conditionFulfilled; j++) {
                 var condition = interpretations[i][j];
                 var first = condition.args[0];
