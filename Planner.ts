@@ -114,6 +114,15 @@ module Planner {
         return plan;
     }
 
+    /**
+     * Get which stack a certain entity belongs to.
+     * A stack is an array of 0 or more entities stacked ontop of eachother.
+     * @param  stacks   All stacks in the current world
+     * @param  entity   The entity for which to get the location
+     * @param  _default A default stack index, if none is found
+     * @return          A number representing the stack where the
+     *                  entity is located.
+     */
     function getStackIndex(stacks : Stack[], entity : string, _default? : number) : number {
         var stackIndex = _default;
 
@@ -127,6 +136,17 @@ module Planner {
         return stackIndex;
     }
 
+    /**
+     * Generates a human readable description from an arm-instruction.
+     * The function makes sure no unnecessary information is included, for
+     * example not returning "... the big white ball" if there is only one ball,
+     * but instead: "... the ball"
+     * @param  node    The current PlannerNode
+     * @param  objects All objects that could possibly exist in the current world
+     * @param  entity  The entity currently being manipulated in some way
+     * @param  action  What will happen with said entity
+     * @return         A correct String, to be printed for the user
+     */
     function getDescription(node : PlannerNode, objects : { [s:string]: ObjectDefinition; }, entity : string, action? : string) : string {
         var result = '';
 
@@ -154,11 +174,15 @@ module Planner {
                 existing.splice(existing.indexOf(entity), 1);
             }
 
+            // Used to keep track of the number of a certain form/color/size
             var numSameForm = existing.reduce((sum, e) => sum + (objects[e].form === objects[entity].form ? 1 : 0), 0);
             var numSameFormColor = existing.reduce((sum, e) => sum + (objects[e].form === objects[entity].form && objects[e].color === objects[entity].color ? 1 : 0), 0);
             var numSameFormSize = existing.reduce((sum, e) => sum + (objects[e].form === objects[entity].form && objects[e].size === objects[entity].size ? 1 : 0), 0);
             var numSameFormColorSize = existing.reduce((sum, e) => sum + (objects[e].form === objects[entity].form && objects[e].color === objects[entity].color && objects[e].size === objects[entity].size ? 1 : 0), 0);
 
+            // Used to filter out the unnecessary information, deciding which
+            // adjectives to keep, depending on how many of a certain
+            // form/color/size that exist in the current world
             if (numSameForm === 0) {
                 result += 'the ' + objects[entity].form;
             } else if (numSameFormColor === 0) {
@@ -186,6 +210,12 @@ module Planner {
         return result + (action ? '.' : '');
     }
 
+    /**
+     * Used to convert a number to an enumerating form.
+     * For example 1 is "first" & 5 is 5th.
+     * @param  num The number to "speechify"
+     * @return     The number in a better described way
+     */
     function mapNumberToText(num : number) : string {
         if (num > 2) {
             return (num + 1) + 'th';
@@ -206,7 +236,7 @@ module Planner {
                 var firstStackPos = n.stacks[firstStackIndex].indexOf(first);
                 var numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
                 /**
-                * For a given condition we calculate the heuristics depending on which relation 
+                * For a given condition we calculate the heuristics depending on which relation
                 * and wheres the arm is located.
                 */
                 if (condition.relation === 'holding' && n.holding !== first) {
@@ -232,7 +262,7 @@ module Planner {
                     var holdingOneOfThem = firstStackPos === -1 || secondStackPos === -1;
 
                     //To get the right heuristics we need to take in considerations the relations of the elements in the world
-                    //this to be able to get the right element to move that is the most efficient. 
+                    //this to be able to get the right element to move that is the most efficient.
                     if (['leftof', 'rightof'].indexOf(condition.relation) > -1 && !(firstStackIndex < secondStackIndex && !holdingOneOfThem)) {
                         if (!holdingOneOfThem) {
                             if (secondStackIndex === 0 && firstStackIndex === n.stacks.length - 1) {
@@ -284,7 +314,7 @@ module Planner {
         for (var i = 0; i < interpretations.length && !_goal; i++) {
             var conditionFulfilled = true;
             // Checks so that a interpretation with its conditions is fullfield.
-            // if all conditions is fullfilled we return true or false 
+            // if all conditions is fullfilled we return true or false
             for (var j = 0; j < interpretations[i].length && conditionFulfilled; j++) {
                 var condition = interpretations[i][j];
                 var first = condition.args[0];
