@@ -79,12 +79,18 @@ module Planner {
         var plan : string[] = [];
 
         var start = new PlannerNode(state.stacks, state.holding, state.arm);
+        // When asking where one or more entities are, no command
+        // is being executed, all entities are simply checked to see which
+        // match the query
         if (interpretations[0][0].relation === 'where') {
             var locations : string[] = [];
 
+            // Since several entities might match the query, this stiches the
+            // results together into a readable sentence.
             interpretations.forEach(function(matches) {
                 var stackIndex = getStackIndex(state.stacks, matches[0].args[0]);
 
+                // If an entity exists, it's either in a stack or in the claw
                 if (stackIndex > -1) {
                     var stackPos = state.stacks[stackIndex].indexOf(matches[0].args[0]);
                     locations.push('in the ' + mapNumberToText(stackIndex) + ' stack ' + getDescription(start, state.objects, state.stacks[stackIndex][stackPos - 1]));
@@ -150,8 +156,7 @@ module Planner {
     function getDescription(node : PlannerNode, objects : { [s:string]: ObjectDefinition; }, entity : string, action? : string) : string {
         var result = '';
 
-        // The result is what we finally write and here we trasform the first simple commands
-        // either picking up och putting
+        // Simply start by describing if an entity is picked up or put down
         if (action === 'p') {
             result = 'Picking up ';
         } else if (action === 'd') {
@@ -159,7 +164,7 @@ module Planner {
         }
 
         //Here the full action of a command will be written to the final sentence that describes a node.
-        //Depending on which move is mad this is catched by if statements.
+        //Depending on which move is made this is catched by if statements.
         //We take in consideration to where the item is placed and if its placed above something we find it
         //and display it for a better representation of where we placed a item.
         if (entity) {
@@ -275,8 +280,8 @@ module Planner {
                     var numAboveSecond = secondStackPos === -1 ? 0 : (n.stacks[secondStackIndex].length - secondStackPos - 1);
                     var holdingOneOfThem = firstStackPos === -1 || secondStackPos === -1;
 
-                    // To get the right heuristics we need to take in consideration the relations of the elements in the world
-
+                    // To get a good heuristic we consider the relations between
+                    // the entities in question
                     if (['leftof', 'rightof'].indexOf(condition.relation) > -1 && !(firstStackIndex < secondStackIndex && !holdingOneOfThem)) {
                         // Separate case if one of the entities is already in the claw,
                         // then that particular item won't have to be exposed
