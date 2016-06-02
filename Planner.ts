@@ -225,34 +225,38 @@ module Planner {
     }
 
     /**
-     * A function used to calculate the heuristics for the aStarPlanner.
-     * TODO Behövs mer här?
-     * @param  interpretations TODO vad är här?
-     * @param  n               The current PlannerNode
-     * @return                 The cost of the potential next move
+     * Calculate the heuristics of a node, to be used in the A* search.
+     * @param  interpretations  The set of possible interpretations
+     * @param  n                The node to calculate the heuristics for
+     * @return                  The heuristics of the node
      */
     function heuristics(interpretations : Interpreter.DNFFormula, n: PlannerNode) : number {
         var result : number[] = [];
+
+        // Calculate a heuristics for the node for every interpretation
         interpretations.forEach(function(interpretation) {
             var _heuristics = 0;
 
+            // The heuristics for a node consists of fulfilling multiple conditions
             interpretation.forEach(function(condition) {
                 var first = condition.args[0];
 
                 var firstStackIndex = getStackIndex(n.stacks, first, n.arm);
                 var firstStackPos = n.stacks[firstStackIndex].indexOf(first);
                 var numAboveFirst = firstStackPos === -1 ? 0 : (n.stacks[firstStackIndex].length - firstStackPos - 1);
-                /**
-                * For a given condition we calculate the heuristics depending on which relation
-                * and wheres the arm is located.
-                */
+
+                // For a given condition we calculate the heuristics depending on which relation is in play
+
+                // numAboveXXXX * 4 comes from picking up an entity, moving it away, dropping it and then returning to the stack
+                // This is to expose the entity you want to manipulate
+
                 if (condition.relation === 'holding' && n.holding !== first) {
                     _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + (n.holding ? 2 : 1);
                 } else {
                     var second = condition.args[1];
 
                     // Because left- & rightof and above & under have sort of
-                    // commutative properties, we switch their reference, to
+                    // commutative properties, we switch their reference to
                     // decrease the number of special cases needed to be checked.
                     // 'rigtof' becomes 'leftof' & 'under' becomes 'above'
                     if (['rightof', 'under'].indexOf(condition.relation) > -1) {
@@ -271,11 +275,8 @@ module Planner {
                     var numAboveSecond = secondStackPos === -1 ? 0 : (n.stacks[secondStackIndex].length - secondStackPos - 1);
                     var holdingOneOfThem = firstStackPos === -1 || secondStackPos === -1;
 
-                    //To get the right heuristics we need to take in considerations the relations of the elements in the world
-                    //this to be able to get the right element to move that is the most efficient.
-                    // numAboveXXXX * 4 comes from moving to the entity, picking
-                    // it up, moving away and then dropping it. This is when
-                    // exposing the entity you want to manipulate
+                    // To get the right heuristics we need to take in consideration the relations of the elements in the world
+
                     if (['leftof', 'rightof'].indexOf(condition.relation) > -1 && !(firstStackIndex < secondStackIndex && !holdingOneOfThem)) {
                         // Separate case if one of the entities is already in the claw,
                         // then that particular item won't have to be exposed
@@ -320,12 +321,23 @@ module Planner {
                     // If one entity should be beside the other, move the one
                     // that's easiest to access
                     } else if (condition.relation === 'beside' && !(stackDifference === 1 && !holdingOneOfThem)) {
-                        /* TODO Fix multi-line if-else */
-                        _heuristics += !holdingOneOfThem ? Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) : n.holding === first ? Math.abs(secondStackIndex - n.arm) : Math.abs(firstStackIndex - n.arm);
+                        if (!holdingOneOfThem) {
+                          _heuristics += Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex);
+                        } else {
+                          _heuristics += n.holding === first ? Math.abs(secondStackIndex - n.arm) : Math.abs(firstStackIndex - n.arm);
+                        }
                     } else if (['inside', 'ontop'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos === secondStackPos + 1 && !holdingOneOfThem)) {
-                        _heuristics += n.holding !== first ? Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1 : Math.abs(secondStackIndex - n.arm) + (numAboveSecond * 4) + 1;
+                        if (n.holding !== first) {
+                          _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1;
+                        } else {
+                          _heuristics += Math.abs(secondStackIndex - n.arm) + (numAboveSecond * 4) + 1;
+                        }
                     } else if (['above', 'under'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos > secondStackPos && !holdingOneOfThem)) {
-                        _heuristics += n.holding !== first ? Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + 1 : Math.abs(secondStackIndex - n.arm) + 1;
+                        if (n.holding !== first) {
+                          _heuristics += Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + 1;
+                        } else {
+                          _heuristics += Math.abs(secondStackIndex - n.arm) + 1;
+                        }
                     }
                 }
             });
@@ -333,17 +345,19 @@ module Planner {
             result.push(_heuristics);
         });
 
+        // Return the lowest heuristics
         return Math.min.apply(null, result);
     }
 
     var goalCount: number = 0;
 
     /**
-     * TODO Not sure
-     * @param  interpretations TODO
-     * @param  objects         All objects that could possibly exist in the current world
-     * @param  n               To current PlannerNode
-     * @return                 Simply returns if the goal is reached or not
+     * Check whether or not a node is to be considered reached "goal" status,
+     * true if either of interpretations is fulfilled, otherwise false
+     * @param  interpretations The set of possible interpretations
+     * @param  objects         The set of objects that could possibly exist in the world
+     * @param  n               The node the be checked for "goal" status
+     * @return                 A boolean indicating whether or not the node is to be considered a "goal"
      */
     function goal(interpretations : Interpreter.DNFFormula, objects: { [s:string]: ObjectDefinition; }, n: PlannerNode) : boolean {
         goalCount++;
