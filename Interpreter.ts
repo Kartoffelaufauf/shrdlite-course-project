@@ -143,14 +143,15 @@ module Interpreter {
                     location: cmd.location.entity.object.location
                 };
 
+                // Get the various interpretations needed for deep world manipulation
                 interpretCommand(newCommand, state).forEach(function(interpretation) {
-                    var interpretationCopy = interpretation.slice(0);
+                    var _interpretation = interpretation.slice(0);
 
                     first.forEach(function(_first) {
                         // If the all quantifier is used, group the interpretations together
                         if (cmd.entity.quantifier === 'all') {
                             if (isValid(cmd.location.relation, _first, interpretation[interpretation.length - 1].args[0])) {
-                                interpretationCopy.push({polarity: true, relation: cmd.location.relation, args: [_first, interpretation[interpretation.length - 1].args[0]]});
+                                _interpretation.push({polarity: true, relation: cmd.location.relation, args: [_first, interpretation[interpretation.length - 1].args[0]]});
                             }
                         } else {
                             if (isValid(cmd.location.relation, _first, interpretation[interpretation.length - 1].args[0])) {
@@ -160,7 +161,7 @@ module Interpreter {
                     });
 
                     if (cmd.entity.quantifier === 'all')
-                        interpretations.push(interpretationCopy);
+                        interpretations.push(_interpretation);
                 });
             } else {
                 var second = getEntities(state, cmd.location.entity.object);
@@ -173,6 +174,7 @@ module Interpreter {
                 });
             }
 
+            // Special treatment for the all quantifier
             if (cmd.command === 'move' && (cmd.entity.quantifier === 'all' || cmd.location.entity.quantifier === 'all')) {
                 if (!doRecursion && interpretations.length > 0)
                     interpretations = allQuantifierValidator(interpretations, state.objects, cmd.location.relation, cmd.entity.quantifier, cmd.location.entity.quantifier);
@@ -222,9 +224,17 @@ module Interpreter {
         else
             throw "No interpretations possible";
 
-        // ### HELPER FUNCTIONS BELOW ###
+        /** ### HELPER FUNCTIONS BELOW ### */
 
-        // Calculate to possible and valid combinations of the interpretations when the all quantifier is used
+        /**
+         * Calculate the set of possible and valid combinations of a set of interpretations.
+         * @param  interpretations  The set of interpretations to calculate on
+         * @param  objects          The set of objects in the world
+         * @param  relation         The relation between the entites
+         * @param  fromQuantifier   The first quantifier in the request
+         * @param  toQuantifier     The second quantifier in the request
+         * @return                  The set of possible and valid combinations of the interpretations given
+         */
         function allQuantifierValidator(interpretations : Literal[][], objects : { [s:string]: ObjectDefinition; }, relation : string, fromQuantifier : string, toQuantifier : string) {
             if (fromQuantifier === 'all' && toQuantifier === 'all') {
                 var result = [Array.prototype.concat.apply([], interpretations)];
@@ -325,7 +335,13 @@ module Interpreter {
             });
         }
 
-        // Check if the relation between two entities is valid
+        /**
+         * Check if a relation between two entities is valid.
+         * @param  relation   The relation between the entites
+         * @param  first      The first entity of the relation
+         * @param  second     The first entity of the relation
+         * @return            A boolean on whether the relation is valid
+         */
         function isValid(relation : string, first : string, second : string) {
             if (first === second) return false;
 
@@ -350,9 +366,23 @@ module Interpreter {
             return true;
         }
 
-        // Get all entities in the world that fulfill a specific condition and
-        // do so recursively to be able to handle more complex conditions
+        /**
+         * Get all entities in the world that fulfill a specific condition,
+         * and does so recursively to be able to handle more complex conditions.
+         * @param  state      The current world state
+         * @param  condition  The condition which to find mathing entities
+         * @return            The set of matching entities
+         */
         function getEntities(state : WorldState, condition : Parser.Object) : string[] {
+            /**
+             * Get which stack a certain entity belongs to.
+             * A stack is an array of 0 or more entities stacked ontop of eachother.
+             * @param  stacks   All stacks in the current world
+             * @param  entity   The entity for which to get the location
+             * @param  _default A default stack index, if none is found
+             * @return          A number representing the stack where the
+             *                  entity is located.
+             */
             function getStackIndex(entity : string) : number {
                 var stackIndex : number;
                 for (var i = 0; i < state.stacks.length; i++) {
@@ -365,14 +395,17 @@ module Interpreter {
                 return stackIndex;
             }
 
+            // Calculate a list of entities that actually exists
             var existing : string[] = Array.prototype.concat.apply([], state.stacks);
             if (state.holding !== null) existing.push(state.holding);
 
             var result : Array<string> = new Array<string>();
 
+            // The floor always exists
             if (condition.form === 'floor')
                 return ['floor'];
 
+            // If part of the condition is a relation to some other entity
             if ('location' in condition) {
                 var first : string[] = getEntities(state, condition.object);
                 var second : string[] = getEntities(state, condition.location.entity.object);
@@ -409,6 +442,7 @@ module Interpreter {
                     });
                 });
             } else {
+                // Get all entities matching the condition
                 existing.forEach(function(entity) {
                     if ((condition.size === null || condition.size === state.objects[entity].size) &&
                         (condition.color === null || condition.color === state.objects[entity].color) &&
