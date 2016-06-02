@@ -33,6 +33,9 @@ class SearchResult<Node> {
     cost : number;
 }
 
+/** Wrapper class that store a node and the various cost values associated
+    with that particular node (e.i. g and f costs) as well as a reference to
+    a parent node (e.i. another custom queue element). */
 class QueueElement<Node> {
     parent : QueueElement<Node>;
     node : Node;
@@ -71,11 +74,15 @@ function aStarSearch<Node> (
 ) : SearchResult<Node> {
     var startTime = new Date().getTime();
 
+    // The set (queue) of currently discovered nodes still to be evaluated, sorted by f score
     var frontier = new collections.PriorityQueue<QueueElement<Node>>(function(a: QueueElement<Node>, b: QueueElement<Node>) {
         return b.f - a.f;
     });
+
+    // The set of nodes already evaluated
     var visited = new collections.Set<Node>();
 
+    // Initially, only the start node is known
     frontier.add(new QueueElement(null, start, 0, heuristics(start)));
 
     while (!frontier.isEmpty()) {
@@ -87,6 +94,8 @@ function aStarSearch<Node> (
 
         if (!visited.contains(current.node)) {
             if (goal(current.node)) {
+                // It we are at the goal, lets backtrack the final path
+
                 var result : SearchResult<Node> = {
                     path: [],
                     cost: current.g
@@ -103,6 +112,7 @@ function aStarSearch<Node> (
 
             visited.add(current.node);
 
+            // Add every nonvisited neighbor node to the frontier
             for (var edge of graph.outgoingEdges(current.node)) {
                 if (!visited.contains(edge.to)) {
                     frontier.add(new QueueElement(current, edge.to, current.g + edge.cost, heuristics(edge.to)));
