@@ -371,11 +371,10 @@ module Planner {
         // If one or more is fulfilled we changed the goal to be true.
         for (var i = 0; i < interpretations.length && !_goal; i++) {
             var conditionFulfilled = true;
-            // Checks so that a interpretation with its conditions is fullfield.
-            // if all conditions is fullfilled we return true or false
-            // It's implemented in a way that assumes the goal is fulfilled
-            // and sets it to false if anything is found which doesn't
-            // matches the desired goal
+            // Checks so that a interpretation with its conditions is fulfilled, if so we return true.
+            // It's implemented in a way that assumes the goal is fulfilled and sets it to false
+            // if anything is found which doesn't match the desired goal
+
             for (var j = 0; j < interpretations[i].length && conditionFulfilled; j++) {
                 var condition = interpretations[i][j];
                 var first = condition.args[0];
@@ -405,8 +404,7 @@ module Planner {
                         var secondStackPos = n.stacks[secondStackIndex].indexOf(second);
                         var secondType = objects[second].form;
 
-                        // Simply checks to see if the relevant contidion is
-                        // fulfilled
+                        // Simply checks to see if the relevant condition is fulfilled
                         if (condition.relation === 'leftof') {
                             if (!(firstStackIndex < secondStackIndex)) conditionFulfilled = false;
                         } else if (condition.relation === 'rightof') {
