@@ -259,6 +259,7 @@ module Interpreter {
                 }
             }
 
+            // Calculate the cartesian product of a set of sets
             function cartesian(arg : Literal[][]) : Literal[][] {
                 var r : Literal[][] = [], max = arg.length - 1;
 
@@ -294,11 +295,13 @@ module Interpreter {
             }
 
             return cartesian(groupConditionsByEntityValues).filter(function(combination) {
+                // Only keep valid combinations
+
                 var entitiesSeen : string[] = [];
 
                 if (['leftof', 'rightof', 'beside'].indexOf(cmd.location.relation) > -1) {
                     // If we want a single entity to be leftof/rightof/beside one or more other entities,
-                    // only keep the combination where all the conditions is going from the same entity
+                    // only keep the combination if the relation is going from the same entity
                     if (toQuantifier === 'all') {
                         return !combination.some(function(condition) {
                             if (entitiesSeen.length > 0 && entitiesSeen.indexOf(condition.args[0]) === -1) {
@@ -459,7 +462,7 @@ module Interpreter {
             } else {
                 // Get all entities matching the condition, if an attribute is
                 // not specified (null), all of those entities fullfill the
-                // condition. A "red ball" can be both large or small if
+                // condition. A "red ball" can be either large or small if
                 // not specified
                 existing.forEach(function(entity) {
                     if ((condition.size === null || condition.size === state.objects[entity].size) &&
