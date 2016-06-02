@@ -77,8 +77,8 @@ module Planner {
      */
     function planInterpretation(interpretations : Interpreter.DNFFormula, state : WorldState) : string[] {
         var plan : string[] = [];
-
         var start = new PlannerNode(state.stacks, state.holding, state.arm);
+
         // When asking where one or more entities are, no command
         // is being executed, all entities are simply checked to see which
         // match the query
@@ -102,6 +102,8 @@ module Planner {
             var locationString = (locations.length > 1 ? 'There are many. The first one is ' : 'It is ') + locations.join(" and another ") + '.';
             plan.push(locationString);
         } else {
+            // Lets search for a set of commands to fulfill any of the interpretations
+
             var graph = new PlannerGraph(state.objects);
             var _goal = (n: PlannerNode) => goal(interpretations, state.objects, n);
             var _heuristics = (n: PlannerNode) => heuristics(interpretations, n);
@@ -163,10 +165,7 @@ module Planner {
             result = 'Putting it ';
         }
 
-        //Here the full action of a command will be written to the final sentence that describes a node.
-        //Depending on which move is made this is catched by if statements.
-        //We take in consideration to where the item is placed and if its placed above something we find it
-        //and display it for a better representation of where we placed a item.
+        // Here we calculate a unique description of the entity, also taking the action into consideration
         if (entity) {
             if (action !== 'p') result += objects[entity].form === 'box' ? 'inside ' : 'on ';
 
@@ -179,7 +178,7 @@ module Planner {
                 existing.splice(existing.indexOf(entity), 1);
             }
 
-            // Used to keep track of the number of a certain form/color/size
+            // Used to keep track of the number of entities with a certain form/color/size
             var numSameForm = existing.reduce((sum, e) => sum + (objects[e].form === objects[entity].form ? 1 : 0), 0);
             var numSameFormColor = existing.reduce((sum, e) => sum + (objects[e].form === objects[entity].form && objects[e].color === objects[entity].color ? 1 : 0), 0);
             var numSameFormSize = existing.reduce((sum, e) => sum + (objects[e].form === objects[entity].form && objects[e].size === objects[entity].size ? 1 : 0), 0);
