@@ -224,6 +224,13 @@ module Planner {
         }
     }
 
+    /**
+     * A function used to calculate the heuristics for the aStarPlanner.
+     * TODO Behövs mer här?
+     * @param  interpretations TODO vad är här?
+     * @param  n               The current PlannerNode
+     * @return                 The cost of the potential next move
+     */
     function heuristics(interpretations : Interpreter.DNFFormula, n: PlannerNode) : number {
         var result : number[] = [];
         interpretations.forEach(function(interpretation) {
@@ -244,7 +251,10 @@ module Planner {
                 } else {
                     var second = condition.args[1];
 
-                    // Because left- & rightof and above & under have sort of commutative properties
+                    // Because left- & rightof and above & under have sort of
+                    // commutative properties, we switch their reference, to
+                    // decrease the number of special cases needed to be checked.
+                    // 'rigtof' becomes 'leftof' & 'under' becomes 'above'
                     if (['rightof', 'under'].indexOf(condition.relation) > -1) {
                         var tmp = first;
                         first = second;
@@ -263,23 +273,43 @@ module Planner {
 
                     //To get the right heuristics we need to take in considerations the relations of the elements in the world
                     //this to be able to get the right element to move that is the most efficient.
+                    // numAboveXXXX * 4 comes from moving to the entity, picking
+                    // it up, moving away and then dropping it. This is when
+                    // exposing the entity you want to manipulate
                     if (['leftof', 'rightof'].indexOf(condition.relation) > -1 && !(firstStackIndex < secondStackIndex && !holdingOneOfThem)) {
+                        // Separate case if one of the entities is already in the claw,
+                        // then that particular item won't have to be exposed
+                        // and/or picked up.
                         if (!holdingOneOfThem) {
+                            // Edge case, where both entities are at the edge
                             if (secondStackIndex === 0 && firstStackIndex === n.stacks.length - 1) {
                                 _heuristics += Math.min(Math.abs(firstStackIndex - n.arm), Math.abs(secondStackIndex - n.arm)) + Math.abs(firstStackIndex - secondStackIndex) * 2 + (numAboveFirst + numAboveSecond) * 4 + 2;
+                            // If one of the entities are at the edge but not
+                            // the other, it might be faster to move that one
                             } else if (secondStackIndex === 0) {
                                 _heuristics += Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4 + 1 + Math.abs(firstStackIndex - secondStackIndex) + 2;
                             } else if (firstStackIndex === n.stacks.length - 1) {
                                 _heuristics += Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4 + 1 + Math.abs(firstStackIndex - secondStackIndex) + 2;
+                            // If no entity is at the edge, move the one which
+                            // is easiest to expose
                             } else {
                                 _heuristics += Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + 2;
                             }
                         } else {
+                            // If the goal can be fulfilled simply by dropping
+                            // the held entity, just do so
                             if (n.holding === first && n.arm < secondStackIndex || n.holding === second && n.arm > firstStackIndex) {
                                 _heuristics += 1;
                             } else {
+                                // If the entity to manipulate is held, move
+                                // the specified number of stacks in the correct
+                                // direction and drop it.
                                 _heuristics += n.holding === first ? n.arm - secondStackIndex + 2 : firstStackIndex - n.arm + 2;
 
+                                // If holding the entity to manipulate and the
+                                // other entity is at an edge, the current
+                                // entity has to be put down and the other
+                                // entity moved first
                                 if (n.holding === first && secondStackIndex === 0) {
                                     _heuristics += numAboveSecond * 4 + 3;
                                 } else if (n.holding === second && firstStackIndex === n.stacks.length - 1) {
@@ -287,7 +317,10 @@ module Planner {
                                 }
                             }
                         }
+                    // If one entity should be beside the other, move the one
+                    // that's easiest to access
                     } else if (condition.relation === 'beside' && !(stackDifference === 1 && !holdingOneOfThem)) {
+                        /* TODO Fix multi-line if-else */
                         _heuristics += !holdingOneOfThem ? Math.min(Math.abs(firstStackIndex - n.arm) + numAboveFirst * 4, Math.abs(secondStackIndex - n.arm) + numAboveSecond * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) : n.holding === first ? Math.abs(secondStackIndex - n.arm) : Math.abs(firstStackIndex - n.arm);
                     } else if (['inside', 'ontop'].indexOf(condition.relation) > -1 && !(stackDifference === 0 && firstStackPos === secondStackPos + 1 && !holdingOneOfThem)) {
                         _heuristics += n.holding !== first ? Math.abs(firstStackIndex - n.arm) + (numAboveFirst * 4) + 1 + Math.abs(firstStackIndex - secondStackIndex) + (numAboveSecond * 4) + 1 : Math.abs(secondStackIndex - n.arm) + (numAboveSecond * 4) + 1;
@@ -305,6 +338,13 @@ module Planner {
 
     var goalCount: number = 0;
 
+    /**
+     * TODO Not sure
+     * @param  interpretations TODO
+     * @param  objects         All objects that could possibly exist in the current world
+     * @param  n               To current PlannerNode
+     * @return                 Simply returns if the goal is reached or not
+     */
     function goal(interpretations : Interpreter.DNFFormula, objects: { [s:string]: ObjectDefinition; }, n: PlannerNode) : boolean {
         goalCount++;
 
@@ -315,6 +355,9 @@ module Planner {
             var conditionFulfilled = true;
             // Checks so that a interpretation with its conditions is fullfield.
             // if all conditions is fullfilled we return true or false
+            // It's implemented in a way that assumes the goal is fulfilled
+            // and sets it to false if anything is found which doesn't
+            // matches the desired goal
             for (var j = 0; j < interpretations[i].length && conditionFulfilled; j++) {
                 var condition = interpretations[i][j];
                 var first = condition.args[0];
@@ -325,6 +368,7 @@ module Planner {
                     var second = condition.args[1];
                     var firstStackIndex = getStackIndex(n.stacks, first);
 
+                    /* TODO hmm */
                     if (firstStackIndex == null) {
                         conditionFulfilled = false;
                         continue;
@@ -343,6 +387,8 @@ module Planner {
                         var secondStackPos = n.stacks[secondStackIndex].indexOf(second);
                         var secondType = objects[second].form;
 
+                        // Simply checks to see if the relevant contidion is
+                        // fulfilled
                         if (condition.relation === 'leftof') {
                             if (!(firstStackIndex < secondStackIndex)) conditionFulfilled = false;
                         } else if (condition.relation === 'rightof') {
@@ -368,6 +414,9 @@ module Planner {
         return _goal;
     }
 
+    /**
+     * TODO wat iz diz
+     */
     class PlannerGraph implements Graph<PlannerNode> {
         constructor(public objects : { [s:string]: ObjectDefinition; }) {}
 
@@ -389,6 +438,7 @@ module Planner {
 
                 var description : string;
 
+                /* TODO fix */
                 if (command === 'l') {
                     if (arm <= 0) return;
                     arm--;
@@ -400,6 +450,8 @@ module Planner {
                     holding = stacks[arm].pop();
 
                     description = getDescription(node, self.objects, holding, 'p');
+                // Before dropping an entity, we have to make sure the
+                // entity underneath can support it
                 } else if (command === 'd') {
                     var holdForm = holding ? self.objects[holding].form : null;
                     var holdSize = holding ? self.objects[holding].size : null;
@@ -407,12 +459,18 @@ module Planner {
                     var topSize = stacks[arm][0] ? self.objects[stacks[arm][stacks[arm].length - 1]].size : null;
 
                     if ((holding === null) ||
-                        (topSize === 'small' && holdSize === 'large') ||                                                        // Small objects cannot support large objects
-                        (topForm && topForm !== 'box' && holdForm === 'ball') ||                                                // Balls must be in boxes or on the floor, otherwise they roll away
-                        (topForm === 'ball') ||                                                                                 // Balls cannot support anything
-                        (topForm === 'box' && ['pyramid', 'plank', 'box'].indexOf(holdForm) !== -1 && topSize === holdSize) ||  // Boxes cannot contain pyramids, planks or boxes of the same size
-                        (topSize === 'small' && ['brick', 'pyramid'].indexOf(topForm) !== -1 && holdForm === 'box') ||          // Small boxes cannot be supported by small bricks or pyramids
-                        (topForm === 'pyramid' && holdForm === 'box' && holdSize === topSize)) {                                // Large boxes cannot be supported by large pyramids
+                        // Small objects cannot support large objects
+                        (topSize === 'small' && holdSize === 'large') ||
+                        // Balls must be in boxes or on the floor, otherwise they roll away
+                        (topForm && topForm !== 'box' && holdForm === 'ball') ||
+                        // Balls cannot support anything
+                        (topForm === 'ball') ||
+                        // Boxes cannot contain pyramids, planks or boxes of the same size
+                        (topForm === 'box' && ['pyramid', 'plank', 'box'].indexOf(holdForm) !== -1 && topSize === holdSize) ||
+                        // Small boxes cannot be supported by small bricks or pyramids
+                        (topSize === 'small' && ['brick', 'pyramid'].indexOf(topForm) !== -1 && holdForm === 'box') ||
+                        // Large boxes cannot be supported by large pyramids
+                        (topForm === 'pyramid' && holdForm === 'box' && holdSize === topSize)) {
                         return;
                     }
 
@@ -441,11 +499,11 @@ module Planner {
         public stacks: Stack[];
 
         constructor(
-            stacks : Stack[],
-            public holding : string,
-            public arm : number,
-            public command? : string,
-            public description? : string
+            stacks : Stack[],            // All current stacks in the world
+            public holding : string,     // Entity currently held by the arm
+            public arm : number,         // The current positon of the arm
+            public command? : string,    // An optional command for the arm
+            public description? : string // An optional description to be printed
         ) {
             this.stacks = JSON.parse(JSON.stringify(stacks));
         }
