@@ -179,7 +179,9 @@ module Interpreter {
                 if (!doRecursion && interpretations.length > 0)
                     interpretations = allQuantifierValidator(interpretations, state.objects, cmd.location.relation, cmd.entity.quantifier, cmd.location.entity.quantifier);
 
-                // Make sure there is enough entities to fulfill the request
+                // Make sure there are enough entities to fulfill the request,
+                // For example, all balls can't be put in all boxes if the
+                // number of boxes and balls don't match.
                 if (['inside', 'ontop'].indexOf(cmd.location.relation) > -1) {
                     if (cmd.entity.quantifier === 'all' && cmd.location.entity.quantifier === 'all') {
                         if (!(first.length === 1 && second.length === 1)) interpretations = [];
@@ -239,6 +241,9 @@ module Interpreter {
             if (fromQuantifier === 'all' && toQuantifier === 'all') {
                 var result = [Array.prototype.concat.apply([], interpretations)];
 
+                // If all of a certain entity should be above or under
+                // one or several entities i.e. basically one or several entities
+                // in the same stack, make sure there is a maximum of 1 ball
                 if (['above', 'under'].indexOf(relation) > -1) {
                     var entitiesSeen : string[] = [];
 
