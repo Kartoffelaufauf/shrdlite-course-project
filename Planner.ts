@@ -364,7 +364,7 @@ module Planner {
 
         var _goal = false;
         // For each different interpretetion we check if the goal is reached.
-        // if one or more is fulfilled we changed the goal to be true.
+        // If one or more is fulfilled we changed the goal to be true.
         for (var i = 0; i < interpretations.length && !_goal; i++) {
             var conditionFulfilled = true;
             // Checks so that a interpretation with its conditions is fullfield.
@@ -382,7 +382,7 @@ module Planner {
                     var second = condition.args[1];
                     var firstStackIndex = getStackIndex(n.stacks, first);
 
-                    /* TODO hmm */
+                    // An entity held by the claw is not to be considered in any relation to any other entity
                     if (firstStackIndex == null) {
                         conditionFulfilled = false;
                         continue;
@@ -428,17 +428,21 @@ module Planner {
         return _goal;
     }
 
-    /**
-     * TODO wat iz diz
-     */
     class PlannerGraph implements Graph<PlannerNode> {
         constructor(public objects : { [s:string]: ObjectDefinition; }) {}
 
+        /**
+         * Get the neighbor nodes to a given node
+         * @param  node   The node to find the neighbor of
+         * @return        The set of neighbor nodes
+         */
         outgoingEdges(node : PlannerNode) : Edge<PlannerNode>[] {
             var outgoing : Edge<PlannerNode>[] = [];
             var self = this;
 
+            // There are for branches possible, lets explore all of them
             ['l', 'r', 'p', 'd'].forEach(function(command) {
+                // Do not return nodes which the A* search has already been given (commands that cancel out)
                 // Not necessary for time complexity of search, but help with memory consumption
                 if ((node.command === 'l' && command === 'r') ||
                     (node.command === 'r' && command === 'l') ||
@@ -452,7 +456,6 @@ module Planner {
 
                 var description : string;
 
-                /* TODO fix */
                 if (command === 'l') {
                     if (arm <= 0) return;
                     arm--;
