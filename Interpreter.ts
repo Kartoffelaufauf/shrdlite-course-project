@@ -305,9 +305,10 @@ module Interpreter {
                 var entitiesSeen : string[] = [];
 
                 if (['leftof', 'rightof', 'beside'].indexOf(cmd.location.relation) > -1) {
-                    // If we want a single entity to be leftof/rightof/beside one or more other entities,
-                    // only keep the combination if the relation is going from the same entity
                     if (toQuantifier === 'all') {
+                        // If we want a single entity to be leftof/rightof/beside one or more other entities,
+                        // only keep the combination if all relations is going from the same entity (as the from quantifier isn't all)
+
                         return !combination.some(function(condition) {
                             if (entitiesSeen.length > 0 && entitiesSeen.indexOf(condition.args[0]) === -1) {
                                 return true;

@@ -92,6 +92,7 @@ function aStarSearch<Node> (
 
         var current = frontier.dequeue();
 
+        // Skip already visited nodes
         if (!visited.contains(current.node)) {
             if (goal(current.node)) {
                 // It we are at the goal, lets backtrack the final path
