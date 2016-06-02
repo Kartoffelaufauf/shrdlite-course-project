@@ -350,16 +350,26 @@ module Interpreter {
             var secondSize = second !== 'floor' ? state.objects[second].size : null;
             var secondForm = second !== 'floor' ? state.objects[second].form : null;
 
-            if ((second !== 'floor' && ['inside', 'ontop', 'above'].indexOf(relation) > -1 && firstSize === 'large' && secondSize === 'small') ||                     // Small objects cannot support large objects, pt. 1
-                (relation === 'under' && firstSize === 'small' && secondSize === 'large') ||                                                                          // Small objects cannot support large objects, pt. 2
-                (firstForm === 'ball' && !(relation === 'inside' || (relation === 'ontop' ? second === 'floor' : true))) ||                                           // Balls must be in boxes or on the floor, otherwise they roll away
-                (second !== 'floor' && ['ontop', 'above'].indexOf(relation) > -1 && secondForm === 'ball') ||                                                         // Balls cannot support anything
-                !(relation === 'inside' ? secondForm === 'box' : (relation === 'ontop' ? (second === 'floor' || secondForm !== 'box') : true)) ||                     // Objects are “inside” boxes, but “ontop” of other objects
-                (secondForm === 'box' && relation === 'inside' && ['pyramid', 'plank', 'box'].indexOf(firstForm) > -1 && firstSize === secondSize) ||                 // Boxes cannot contain pyramids, planks or boxes of the same size
-                (firstSize === 'small' && firstForm === 'box' && relation === 'ontop' && secondSize === 'small' && ['brick', 'pyramid'].indexOf(secondForm) > -1) ||  // Small boxes cannot be supported by small bricks or pyramids
-                (firstSize === 'large' && firstForm === 'box' && relation === 'ontop' && secondSize === 'large' && secondForm === 'pyramid') ||                       // Large boxes cannot be supported by large pyramids
-                (second === 'floor' && ['ontop', 'above'].indexOf(relation) === -1) ||                                                                                // An object can only be ontop or above the floor
-                (first === 'floor')) {                                                                                                                                // The floor cannot be moved
+                // Small objects cannot support large objects, pt. 1
+            if ((second !== 'floor' && ['inside', 'ontop', 'above'].indexOf(relation) > -1 && firstSize === 'large' && secondSize === 'small') ||
+                // Small objects cannot support large objects, pt. 2
+                (relation === 'under' && firstSize === 'small' && secondSize === 'large') ||
+                // Balls must be in boxes or on the floor, otherwise they roll away
+                (firstForm === 'ball' && !(relation === 'inside' || (relation === 'ontop' ? second === 'floor' : true))) ||
+                // Balls cannot support anything
+                (second !== 'floor' && ['ontop', 'above'].indexOf(relation) > -1 && secondForm === 'ball') ||
+                // Objects are “inside” boxes, but “ontop” of other objects
+                !(relation === 'inside' ? secondForm === 'box' : (relation === 'ontop' ? (second === 'floor' || secondForm !== 'box') : true)) ||
+                // Boxes cannot contain pyramids, planks or boxes of the same size
+                (secondForm === 'box' && relation === 'inside' && ['pyramid', 'plank', 'box'].indexOf(firstForm) > -1 && firstSize === secondSize) ||
+                // Small boxes cannot be supported by small bricks or pyramids
+                (firstSize === 'small' && firstForm === 'box' && relation === 'ontop' && secondSize === 'small' && ['brick', 'pyramid'].indexOf(secondForm) > -1) ||
+                // Large boxes cannot be supported by large pyramids
+                (firstSize === 'large' && firstForm === 'box' && relation === 'ontop' && secondSize === 'large' && secondForm === 'pyramid') ||
+                // An object can only be ontop or above the floor
+                (second === 'floor' && ['ontop', 'above'].indexOf(relation) === -1) ||
+                // The floor cannot be moved
+                (first === 'floor')) {
                 return false;
             }
 
@@ -416,12 +426,16 @@ module Interpreter {
                     second.some(function(_second : string) {
                         var secondStackIndex : number = getStackIndex(_second);
 
+                        // Checks which relations between to entities are fulfilled
+                        // If a condition is fullfilled, add it to the list
+                        // of found entities
                         if (condition.location.relation === 'leftof') {
                             return firstStackIndex < secondStackIndex ? result.push(_first) && true : false;
                         } else if (condition.location.relation === 'rightof') {
                             return firstStackIndex > secondStackIndex ? result.push(_first) && true : false;
                         } else if (condition.location.relation === 'beside') {
                             return Math.abs(firstStackIndex - secondStackIndex) === 1 ? result.push(_first) && true : false;
+                        // An enitity is 'inside' a box but 'ontop' anything else
                         } else if (condition.location.relation === 'inside') {
                             return state.objects[_second].form === 'box' && firstStackIndex === secondStackIndex && state.stacks[firstStackIndex].indexOf(_first) === state.stacks[secondStackIndex].indexOf(_second) + 1 ? result.push(_first) && true : false;
                         } else if (condition.location.relation === 'ontop') {
@@ -430,6 +444,7 @@ module Interpreter {
                             else
                                 return state.objects[_second].form === 'box' && firstStackIndex === secondStackIndex && state.stacks[firstStackIndex].indexOf(_first) === state.stacks[secondStackIndex].indexOf(_second) + 1 ? result.push(_first) && true : false;
                         } else if (condition.location.relation === 'above') {
+                            // Everything is above the floor
                             if (_second === 'floor')
                                 return result.push(_first) && true;
                             else
@@ -442,7 +457,10 @@ module Interpreter {
                     });
                 });
             } else {
-                // Get all entities matching the condition
+                // Get all entities matching the condition, if an attribute is
+                // not specified (null), all of those entities fullfill the
+                // condition. A "red ball" can be both large or small if
+                // not specified
                 existing.forEach(function(entity) {
                     if ((condition.size === null || condition.size === state.objects[entity].size) &&
                         (condition.color === null || condition.color === state.objects[entity].color) &&
